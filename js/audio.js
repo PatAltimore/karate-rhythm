@@ -25,7 +25,7 @@ KR.audio = (function () {
   "use strict";
 
   var ctx = null;
-  var master, musicGain, sfxGain;
+  var master, musicGain, sfxGain, sfxComp;
   var noiseBuffer = null;
 
   var BPM = 110;
@@ -98,7 +98,16 @@ KR.audio = (function () {
 
     sfxGain = ctx.createGain();
     sfxGain.gain.value = 0.7;
-    sfxGain.connect(master);
+
+    // Soft limiter so overlapping gong hits (dense at high levels) never clip.
+    sfxComp = ctx.createDynamicsCompressor();
+    sfxComp.threshold.value = -12;
+    sfxComp.knee.value = 8;
+    sfxComp.ratio.value = 12;
+    sfxComp.attack.value = 0.002;
+    sfxComp.release.value = 0.14;
+    sfxGain.connect(sfxComp);
+    sfxComp.connect(master);
 
     noiseBuffer = makeNoise();
     applyMute();
@@ -262,26 +271,62 @@ KR.audio = (function () {
   }
 
   // ---- Sound effects ---------------------------------------------------
+  // The current chord's tonic, so percussion hits ring in key with the music.
+  function currentRoot() {
+    var beat = ctx ? (ctx.currentTime - startTime) / beatDuration : 0;
+    if (beat < 0) beat = 0;
+    var theme = THEMES[sectionFor(beat) % THEMES.length];
+    return theme.bars[Math.floor((Math.floor(beat) % 16) / 4)].pc;
+  }
+
+  // A clean strike rings like a struck gong, in time and in tune with the
+  // track: a taiko-style impact thud for the punch, a ring of inharmonic
+  // (bell-like) partials tuned to the current key, and a cymbal sizzle on top.
   function playHit(quality) {
     if (!ctx) return;
     var t = ctx.currentTime;
-    var o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = "square";
-    var lo = quality === "perfect" ? 740 : 560;
-    var hi = quality === "perfect" ? 1760 : 1180;
-    o.frequency.setValueAtTime(lo, t);
-    o.frequency.exponentialRampToValueAtTime(hi, t + 0.08);
-    g.gain.setValueAtTime(0.5, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
-    o.connect(g); g.connect(sfxGain);
-    o.start(t); o.stop(t + 0.18);
+    var perfect = quality === "perfect";
+    var f0 = pcFreq(reduce(currentRoot()), perfect ? 4 : 3);
+    var dur = perfect ? 0.55 : 0.36;
 
+    var ring = ctx.createGain();
+    ring.gain.value = perfect ? 0.42 : 0.32;
+    ring.connect(sfxGain);
+
+    var partials = [1, 1.34, 1.83, 2.41, 3.06];
+    var amps = [0.5, 0.34, 0.26, 0.18, 0.12];
+    for (var i = 0; i < partials.length; i++) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine";
+      var f = f0 * partials[i];
+      o.frequency.setValueAtTime(f * 1.012, t);
+      o.frequency.exponentialRampToValueAtTime(f, t + 0.09); // gong swell
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(amps[i], t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur * (1 - i * 0.12));
+      o.connect(g); g.connect(ring);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+
+    // taiko impact body
+    var k = ctx.createOscillator(), kg = ctx.createGain();
+    k.type = "sine";
+    k.frequency.setValueAtTime(190, t);
+    k.frequency.exponentialRampToValueAtTime(72, t + 0.1);
+    kg.gain.setValueAtTime(0.45, t);
+    kg.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    k.connect(kg); kg.connect(sfxGain);
+    k.start(t); k.stop(t + 0.16);
+
+    // cymbal sizzle transient
     var n = ctx.createBufferSource(); n.buffer = noiseBuffer;
-    var g2 = ctx.createGain();
-    g2.gain.setValueAtTime(0.35, t);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    n.connect(g2); g2.connect(sfxGain);
-    n.start(t); n.stop(t + 0.1);
+    var bp = ctx.createBiquadFilter(); bp.type = "bandpass";
+    bp.frequency.value = f0 * 3.2; bp.Q.value = 0.6;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(perfect ? 0.4 : 0.28, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + (perfect ? 0.18 : 0.12));
+    n.connect(bp); bp.connect(ng); ng.connect(sfxGain);
+    n.start(t); n.stop(t + 0.2);
   }
 
   function playMiss() {
