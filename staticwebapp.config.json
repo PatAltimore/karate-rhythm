@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/staticwebapp.config.json",
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/css/*", "/js/*", "*.{png,jpg,ico,svg,webmanifest}"]
+  },
+  "mimeTypes": {
+    ".js": "text/javascript",
+    ".json": "application/json"
+  },
+  "routes": [
+    {
+      "route": "/js/*",
+      "headers": { "cache-control": "public, max-age=86400" }
+    },
+    {
+      "route": "/css/*",
+      "headers": { "cache-control": "public, max-age=86400" }
+    }
+  ]
+}

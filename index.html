@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b0b12" />
+  <title>KARATE RHYTHM — an Apple II–style running fighter</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game">
+    <canvas id="screen" width="280" height="192"></canvas>
+
+    <!-- Heads-up display (HTML overlay so text stays crisp at any scale) -->
+    <div id="hud" aria-hidden="true">
+      <div class="hud-top">
+        <div class="score-box">
+          <span class="hud-label">SCORE</span>
+          <span id="score">0</span>
+        </div>
+        <div class="center-box">
+          <div class="level-box">
+            <span class="hud-label">LEVEL</span>
+            <span id="level">1</span>
+          </div>
+          <div id="beat-dot" title="beat"></div>
+        </div>
+        <div class="combo-box">
+          <span id="combo"></span>
+        </div>
+      </div>
+
+      <div class="strength-wrap">
+        <span class="hud-label">STRENGTH</span>
+        <div class="strength-bar">
+          <div id="strength-fill"></div>
+        </div>
+      </div>
+
+      <div id="popup-layer"></div>
+    </div>
+
+    <!-- Title screen -->
+    <div id="title" class="overlay">
+      <h1>KARATE<span>RHYTHM</span></h1>
+      <p class="tag">An endless running fighter in the spirit of Karateka (1984)</p>
+      <ul class="how">
+        <li>You <b>run automatically</b> — the world scrolls past.</li>
+        <li><b>Click / tap / press SPACE</b> to launch a flying jump-kick.</li>
+        <li>Foes march in <b>on the beat</b>. Strike them <b>in rhythm</b>.</li>
+        <li>Mistime a kick or let a foe through and you <b>lose strength</b>.</li>
+        <li>Strength hits zero — you fall. Last as long as you can.</li>
+      </ul>
+      <button id="start-btn" class="btn">► BEGIN</button>
+      <p class="hint">Best with sound on. Headphones recommended.</p>
+    </div>
+
+    <!-- Game over screen -->
+    <div id="gameover" class="overlay hidden">
+      <h2>YOU HAVE FALLEN</h2>
+      <p class="reached">REACHED LEVEL <span id="final-level">1</span></p>
+      <div class="final">
+        <div><span class="hud-label">SCORE</span><span id="final-score">0</span></div>
+        <div><span class="hud-label">BEST</span><span id="best-score">0</span></div>
+        <div><span class="hud-label">FOES FELLED</span><span id="final-kills">0</span></div>
+        <div><span class="hud-label">BEST COMBO</span><span id="final-combo">0</span></div>
+      </div>
+      <button id="restart-btn" class="btn">► AGAIN</button>
+    </div>
+
+    <button id="mute-btn" title="Mute / unmute (M)" aria-label="Mute">♪</button>
+  </div>
+
+  <!-- Classic scripts (no bundler needed) loaded in dependency order -->
+  <script src="js/audio.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/background.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

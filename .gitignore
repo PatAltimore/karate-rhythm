@@ -1,0 +1,16 @@
+# OS / editor / tooling
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+.claude/
+
+# Node (only used for the local dev server, if any)
+node_modules/
+npm-debug.log*
+
+# Azure / SWA CLI
+.azure/
+swa-cli.config.json
+.deployment
