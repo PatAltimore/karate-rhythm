@@ -24,7 +24,7 @@
 
   var INTRO_BEATS = 8;             // grace beats before foes appear
   var LEVEL_BEATS = 32;            // beats per difficulty level (8 bars)
-  var SUB = 2;                     // arrival slots per beat (eighth-note grid)
+  var SUB = 4;                     // arrival slots per beat (16th-note grid)
   var GATE_LEAD_BEATS = 8;         // spawn the torii this far before a boundary
 
   var HIT_PERFECT = 0.07;          // +/- seconds for a perfect strike
@@ -40,36 +40,64 @@
   var JUMP_HEIGHT = 17;
   var GRAVITY = 540;
 
-  // Arrival density charts at eighth-note resolution, one bar = 8 slots.
-  // Slot 0 is the downbeat (lands with the kick drum).
-  var DENSITY = [
-    [1,0,0,0, 1,0,0,0], // d0  2 per bar (quarter notes, sparse)
-    [1,0,1,0, 1,0,1,0], // d1  4 per bar (every beat)
-    [1,0,1,0, 1,0,1,1], // d2  + an eighth
-    [1,0,1,1, 1,0,1,1], // d3  eighths creeping in
-    [1,1,1,0, 1,1,1,1], // d4  busy
-    [1,1,1,1, 1,1,1,1]  // d5  every eighth (max)
-  ];
+  // ---- Rhythm charts ---------------------------------------------------
+  // Foes arrive on a 16th-note grid (SUB = 4). Each one-bar "groove" is 16
+  // slots (slot 0 = downbeat); grooves are composed into 4-bar phrases so the
+  // rhythm has a real shape — syncopation, bursts and rests — instead of a
+  // constant on-beat stream. No groove places hits on adjacent 16ths, so it
+  // never degenerates into finger-mashing.
+  var R    = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0]; // rest (breathe)
+  var ON13 = [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0]; // beats 1 & 3
+  var BACK = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0]; // backbeat 2 & 4
+  var FOUR = [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0]; // four on the floor
+  var EIGH = [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0]; // straight eighths
+  var PUSH = [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,1,0]; // beat + the "and" push
+  var OFFB = [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0]; // all off-beats
+  var CLAV = [1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,0,0]; // son-clave syncopation
+  var TRES = [1,0,0,1, 0,0,1,0, 1,0,0,1, 0,0,1,0]; // tresillo (3-3-2 x2)
+  var BRST = [1,0,1,0, 0,0,0,0, 1,0,1,0, 0,0,0,0]; // two eighths, then breathe
+  var FILL = [1,0,0,0, 1,0,0,0, 1,0,1,0, 1,0,1,0]; // builds into the next level
 
-  // Per level: [densityIndex, travelBeats, scrollMul]. Levels past the table
-  // hold at the hardest row, so the run can go forever.
+  function phrase(a, b, c, d) { return a.concat(b, c, d); } // 4 bars -> 64 slots
+  var PHRASES = [
+    phrase(ON13, ON13, ON13, BACK), // 0  learn the pulse
+    phrase(FOUR, ON13, FOUR, BACK), // 1
+    phrase(FOUR, PUSH, FOUR, PUSH), // 2  first syncopation
+    phrase(EIGH, ON13, EIGH, BRST), // 3  eighths, then breathe
+    phrase(CLAV, FOUR, CLAV, BACK), // 4  clave groove
+    phrase(TRES, BRST, TRES, FILL), // 5  tresillo
+    phrase(OFFB, FOUR, OFFB, PUSH), // 6  off-beats are tricky
+    phrase(EIGH, CLAV, BRST, R),    // 7  busy, then a whole-bar rest
+    phrase(TRES, OFFB, CLAV, FILL), // 8
+    phrase(CLAV, TRES, BRST, FILL)  // 9  hardest, still a groove
+  ];
+  var HARD_PHRASES = [4, 5, 6, 7, 8, 9];
+  var BAR_SLOTS = SUB * 4;          // 16
+  var PHRASE_SLOTS = BAR_SLOTS * 4; // 64
+
+  // Per level: [phraseIndex, travelBeats, scrollMul]. Beyond the table the run
+  // keeps going, cycling the hard grooves so it never settles into one loop.
   var LEVELS = [
     null,
-    [0, 4.0, 1.00],
-    [1, 4.0, 1.06],
-    [1, 3.5, 1.12],
-    [2, 3.5, 1.18],
-    [2, 3.0, 1.24],
-    [3, 3.0, 1.30],
-    [3, 2.5, 1.36],
-    [4, 2.5, 1.42],
-    [4, 2.5, 1.48],
-    [5, 2.5, 1.54]
+    [0, 4.00, 1.00],
+    [1, 4.00, 1.06],
+    [2, 3.75, 1.12],
+    [3, 3.50, 1.18],
+    [4, 3.50, 1.24],
+    [5, 3.25, 1.30],
+    [6, 3.25, 1.36],
+    [7, 3.00, 1.40],
+    [8, 3.00, 1.44],
+    [9, 2.85, 1.48]
   ];
 
   function levelConfig(level) {
-    var c = LEVELS[Math.max(1, Math.min(level, LEVELS.length - 1))];
-    return { chart: DENSITY[c[0]], travelBeats: c[1], scrollMul: c[2] };
+    if (level > 0 && level < LEVELS.length) {
+      var r = LEVELS[level];
+      return { chart: PHRASES[r[0]], travelBeats: r[1], scrollMul: r[2] };
+    }
+    var pick = HARD_PHRASES[(level - LEVELS.length) % HARD_PHRASES.length];
+    return { chart: PHRASES[pick], travelBeats: 2.85, scrollMul: 1.5 };
   }
   function levelForBeat(beat) {
     if (beat < INTRO_BEATS) return 1;
@@ -216,15 +244,20 @@
       elapsed += dt;
       var now = audio.currentTime;
 
-      // Spawn any foes whose march-in time has arrived (eighth-note slots).
+      // Spawn any foes whose march-in time has arrived (16th-note slots). Each
+      // level's 4-bar phrase is indexed from where that level began, so it
+      // always plays bar 0 -> 3 and its fill bar leads into the next level.
       var guard = 0;
       while (true) {
         var arrivalBeat = nextSlot / SUB;
-        var cfg = arrivalBeat < INTRO_BEATS ? null : levelConfig(levelForBeat(arrivalBeat));
+        var lvl = levelForBeat(arrivalBeat);
+        var cfg = arrivalBeat < INTRO_BEATS ? null : levelConfig(lvl);
         var travel = cfg ? cfg.travelBeats : 4.0;
         if (now < audio.getBeatTime(arrivalBeat - travel)) break;
-        if (cfg && cfg.chart[((nextSlot % (4 * SUB)) + (4 * SUB)) % (4 * SUB)] === 1) {
-          spawnEnemy(arrivalBeat, travel);
+        if (cfg) {
+          var rel = nextSlot - boundaryBeat(lvl) * SUB;
+          var idx = ((rel % PHRASE_SLOTS) + PHRASE_SLOTS) % PHRASE_SLOTS;
+          if (cfg.chart[idx] === 1) spawnEnemy(arrivalBeat, travel);
         }
         nextSlot++;
         if (++guard > 512) break;

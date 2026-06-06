@@ -20,7 +20,9 @@ backend — so it hosts for **free** on Azure Static Web Apps.
 - A clean strike fells the foe (one hit) and restores a little strength.
 - A **mistimed kick** (whiff) or a **foe that gets past you** costs strength.
 - Watch the **beat dot** at the top and listen to the kick drum — they mark the beat.
-- Difficulty ramps as you survive: foes arrive in denser rhythmic patterns.
+- Difficulty ramps as you survive: each level is a distinct 4-bar **groove**
+  (backbeats, clave, tresillo, off-beats, burst-then-rest) on a 16th-note grid,
+  with shorter approaches — so it's a rhythm to *play*, not a constant tap.
 
 Press **M** to mute.
 
