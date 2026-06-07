@@ -20,7 +20,7 @@
         </div>
         <div class="center-box">
           <div class="level-box">
-            <span class="hud-label">LEVEL</span>
+            <span class="hud-label" id="act">ACT I</span>
             <span id="level">1</span>
           </div>
           <div id="beat-dot" title="beat"></div>
@@ -28,6 +28,11 @@
         <div class="combo-box">
           <span id="combo"></span>
         </div>
+      </div>
+
+      <div id="boss-hud" style="display:none">
+        <span class="hud-label">SHOGUN</span>
+        <div class="boss-bar"><div id="boss-fill"></div></div>
       </div>
 
       <div class="strength-wrap">
@@ -43,13 +48,13 @@
     <!-- Title screen -->
     <div id="title" class="overlay">
       <h1>KARATE<span>RHYTHM</span></h1>
-      <p class="tag">An endless running fighter in the spirit of Karateka (1984)</p>
+      <p class="tag">A running fighter through three acts to the Shogun — in the spirit of Karateka (1984)</p>
       <ul class="how">
         <li>You <b>run automatically</b> — the world scrolls past.</li>
-        <li><b>Click / tap / press SPACE</b> to launch a flying jump-kick.</li>
-        <li>Foes march in <b>on the beat</b>. Strike them <b>in rhythm</b>.</li>
-        <li>Mistime a kick or let a foe through and you <b>lose strength</b>.</li>
-        <li>Strength hits zero — you fall. Last as long as you can.</li>
+        <li><b>Click / tap / press SPACE</b> on the beat to strike.</li>
+        <li>Foes march in <b>in rhythm</b>; the music <b>darkens</b> each act.</li>
+        <li>Clear <b>ten levels</b>, then duel the <b>Shogun</b> head-to-head.</li>
+        <li>Mistime, or let a blow land, and you <b>lose strength</b>.</li>
       </ul>
       <button id="start-btn" class="btn">► BEGIN</button>
       <p class="hint">Best with sound on. Headphones recommended.</p>
@@ -66,6 +71,17 @@
         <div><span class="hud-label">BEST COMBO</span><span id="final-combo">0</span></div>
       </div>
       <button id="restart-btn" class="btn">► AGAIN</button>
+    </div>
+
+    <!-- Victory screen -->
+    <div id="victory" class="overlay hidden">
+      <h2 class="vict-title">THE SHOGUN FALLS</h2>
+      <p class="reached">THE PALACE IS YOURS</p>
+      <div class="final">
+        <div><span class="hud-label">SCORE</span><span id="vict-score">0</span></div>
+        <div><span class="hud-label">BEST</span><span id="vict-best">0</span></div>
+      </div>
+      <button id="victory-btn" class="btn">► PLAY AGAIN</button>
     </div>
 
     <button id="mute-btn" title="Mute / unmute (M)" aria-label="Mute">♪</button>

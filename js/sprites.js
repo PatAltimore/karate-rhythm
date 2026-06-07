@@ -123,16 +123,97 @@ KR.sprites = (function () {
     r(ctx, 1, -20, 2, 1, PAL.black);
   }
 
+  // ---- Standing duel poses (idle / punch / block) ----------------------
+  function drawIdle(ctx, k) {
+    r(ctx, -5, -9, 3, 9, k.giSh);  r(ctx, -7, -2, 5, 2, PAL.black);  // back leg
+    r(ctx, 2, -9, 3, 9, k.gi);     r(ctx, 2, -2, 5, 2, PAL.black);   // front leg
+    r(ctx, -3, -18, 7, 9, k.gi);
+    r(ctx, -3, -18, 2, 9, k.giSh);
+    r(ctx, -3, -12, 7, 2, k.band);
+    r(ctx, -3, -25, 7, 7, k.skin);
+    r(ctx, -3, -25, 7, 3, k.hair);
+    r(ctx, 2, -21, 1, 1, PAL.black);
+    r(ctx, 3, -19, 2, 5, k.gi);    r(ctx, 3, -20, 2, 2, k.skin);     // front fist up
+    r(ctx, -4, -17, 2, 4, k.giSh); r(ctx, -4, -18, 2, 2, k.skin);    // rear fist
+  }
+
+  function drawPunch(ctx, k) {
+    r(ctx, -5, -9, 3, 9, k.giSh);  r(ctx, -7, -2, 5, 2, PAL.black);  // back leg
+    r(ctx, 3, -9, 3, 9, k.gi);     r(ctx, 3, -2, 6, 2, PAL.black);   // front leg (lunge)
+    r(ctx, -2, -18, 7, 9, k.gi);                                     // torso leaning in
+    r(ctx, -2, -18, 2, 9, k.giSh);
+    r(ctx, -2, -12, 7, 2, k.band);
+    r(ctx, -2, -25, 7, 7, k.skin);
+    r(ctx, -2, -25, 7, 3, k.hair);
+    r(ctx, 3, -21, 1, 1, PAL.black);
+    r(ctx, 2, -17, 9, 3, k.gi);    r(ctx, 10, -18, 3, 3, k.skin);    // straight punch
+    r(ctx, 6, -20, 5, 1, k.giSh);                                    // speed line
+    r(ctx, -4, -15, 3, 2, k.giSh); r(ctx, -5, -15, 2, 2, k.skin);    // chambered rear fist
+  }
+
+  function drawBlock(ctx, k) {
+    r(ctx, -5, -8, 3, 8, k.giSh);  r(ctx, -7, -2, 5, 2, PAL.black);  // braced
+    r(ctx, 2, -8, 3, 8, k.gi);     r(ctx, 2, -2, 5, 2, PAL.black);
+    r(ctx, -4, -17, 7, 9, k.gi);
+    r(ctx, -4, -17, 2, 9, k.giSh);
+    r(ctx, -4, -11, 7, 2, k.band);
+    r(ctx, -4, -24, 7, 7, k.skin);
+    r(ctx, -4, -24, 7, 3, k.hair);
+    r(ctx, 1, -20, 1, 1, PAL.black);
+    r(ctx, 0, -23, 2, 9, k.gi);    r(ctx, 0, -23, 2, 2, k.skin);     // raised forearm
+    r(ctx, -2, -19, 6, 2, k.giSh); r(ctx, 4, -19, 2, 2, k.skin);     // crossed guard
+  }
+
+  // Head/torso top-left anchors per pose, for the helmet/armour overlay.
+  var ANCHOR = {
+    run:   { head: { x: -3, y: -25 }, torso: { x: -3, y: -18 } },
+    idle:  { head: { x: -3, y: -25 }, torso: { x: -3, y: -18 } },
+    punch: { head: { x: -2, y: -25 }, torso: { x: -2, y: -18 } },
+    block: { head: { x: -4, y: -24 }, torso: { x: -4, y: -17 } },
+    kick:  { head: { x: -4, y: -24 }, torso: { x: -4, y: -17 } },
+    hit:   { head: { x: -3, y: -24 }, torso: { x: -3, y: -17 } }
+  };
+
+  // Kabuto helmet + dō armour overlay for ranked guards. rank: 1 light, 2 full.
+  function drawRank(ctx, k, rank, head, torso) {
+    var armor = k.armor || "#2c2433", hi = k.armorHi || "#4a3d56", crest = k.crest || "#d8b048";
+    var hx = head.x, hy = head.y, tx = torso.x, ty = torso.y;
+
+    // chest plate (dō) over the gi
+    r(ctx, tx, ty + 1, 7, 6, armor);
+    r(ctx, tx, ty + 2, 7, 1, hi);
+    r(ctx, tx, ty + 4, 7, 1, hi);
+    if (rank >= 2) { r(ctx, tx - 2, ty, 3, 2, armor); r(ctx, tx + 6, ty, 3, 2, armor); } // sode
+
+    // helmet bowl over the hair
+    r(ctx, hx - 1, hy, 9, 3, armor);
+    r(ctx, hx, hy - 2, 7, 2, armor);
+    r(ctx, hx - 1, hy + 2, 9, 1, hi);          // brow rim
+    r(ctx, hx - 2, hy + 2, 1, 4, armor);       // neck guard (shikoro)
+    r(ctx, hx + 8, hy + 2, 1, 4, armor);
+
+    if (rank >= 2) {
+      pgon(ctx, [hx + 1, hy, hx - 3, hy - 6, hx, hy], crest);        // crescent horns
+      pgon(ctx, [hx + 6, hy, hx + 10, hy - 6, hx + 7, hy], crest);
+      r(ctx, hx + 2, hy - 2, 3, 2, crest);                          // crest centre
+      r(ctx, hx, hy + 5, 7, 2, "#1b151f");                          // menpo (mask)
+      r(ctx, hx + 1, hy + 5, 5, 1, "#46202a");
+    } else {
+      r(ctx, hx + 2, hy - 2, 3, 2, crest);                          // small crest
+    }
+  }
+
   // ---- Public draw -----------------------------------------------------
-  // opts: { facing:1|-1, pose:'run'|'kick'|'hit', phase, kit, rot }
+  // opts: { facing:1|-1, pose:'run'|'kick'|'hit'|'idle'|'punch'|'block', phase, kit, rot, rank }
   function fighter(ctx, cx, feetY, opts) {
     var kit = opts.kit || {
       gi: PAL.white, giSh: PAL.giSh, band: PAL.belt, hair: PAL.black
     };
     var k = {
-      gi: kit.gi, giSh: kit.giSh, band: kit.band,
-      hair: kit.hair, skin: PAL.skin
+      gi: kit.gi, giSh: kit.giSh, band: kit.band, hair: kit.hair, skin: PAL.skin,
+      armor: kit.armor, armorHi: kit.armorHi, crest: kit.crest
     };
+    var pose = opts.pose || "run";
 
     ctx.save();
     ctx.translate(Math.round(cx), Math.round(feetY));
@@ -143,9 +224,17 @@ KR.sprites = (function () {
       ctx.translate(0, 10);
     }
 
-    if (opts.pose === "kick") drawKick(ctx, k);
-    else if (opts.pose === "hit") drawHit(ctx, k);
+    if (pose === "kick") drawKick(ctx, k);
+    else if (pose === "hit") drawHit(ctx, k);
+    else if (pose === "idle") drawIdle(ctx, k);
+    else if (pose === "punch") drawPunch(ctx, k);
+    else if (pose === "block") drawBlock(ctx, k);
     else drawRun(ctx, k, opts.phase || 0);
+
+    if (opts.rank) {
+      var a = ANCHOR[pose] || ANCHOR.run;
+      drawRank(ctx, k, opts.rank, a.head, a.torso);
+    }
 
     ctx.restore();
   }
@@ -226,11 +315,89 @@ KR.sprites = (function () {
     r(ctx, cx - 13, tipY, 2, 1, wing);                            // splayed tip
   }
 
+  // ---- The Shogun boss (large, armoured, horned kabuto) ----------------
+  // ~42px tall. opts: { facing, pose:'idle'|'windup'|'attack'|'hit'|'defeated', rot }
+  function bossHead(ctx, B, hx, hy) {
+    r(ctx, hx, hy + 2, 9, 6, B.skin);                 // face (mostly masked)
+    r(ctx, hx, hy + 5, 9, 4, B.mask);                 // menpo
+    r(ctx, hx, hy + 6, 9, 1, B.maskHi);
+    r(ctx, hx + 1, hy + 4, 2, 1, PAL.black);          // glaring eyes
+    r(ctx, hx + 6, hy + 4, 2, 1, PAL.black);
+    r(ctx, hx - 1, hy, 11, 4, B.armor);               // helmet bowl
+    r(ctx, hx, hy - 2, 9, 2, B.armor);
+    r(ctx, hx - 1, hy + 3, 11, 1, B.gold);            // brow band
+    r(ctx, hx - 3, hy + 3, 2, 5, B.plate);            // neck guard
+    r(ctx, hx + 10, hy + 3, 2, 5, B.plate);
+    pgon(ctx, [hx + 2, hy, hx - 4, hy - 12, hx - 1, hy - 2], B.gold); // tall horns
+    pgon(ctx, [hx + 7, hy, hx + 13, hy - 12, hx + 10, hy - 2], B.gold);
+    r(ctx, hx + 3, hy - 3, 3, 3, B.gold);             // crest disc
+  }
+
+  function boss(ctx, cx, feetY, opts) {
+    var B = {
+      armor: "#2c1c24", plate: "#46232e", gold: "#d8b048",
+      mask: "#5a1e26", maskHi: "#7a2a32", skin: "#e0a878"
+    };
+    var pose = opts.pose || "idle";
+    ctx.save();
+    ctx.translate(Math.round(cx), Math.round(feetY));
+    if (opts.facing < 0) ctx.scale(-1, 1);
+    if (opts.rot) { ctx.translate(0, -16); ctx.rotate(opts.rot); ctx.translate(0, 16); }
+
+    if (pose === "defeated") {
+      r(ctx, -9, -7, 18, 7, B.armor);                 // collapsed
+      r(ctx, -6, -19, 14, 12, B.armor);
+      for (var ly = -17; ly <= -9; ly += 3) r(ctx, -6, ly, 14, 1, B.plate);
+      r(ctx, -10, -19, 5, 6, B.plate); r(ctx, 5, -19, 5, 6, B.plate);
+      bossHead(ctx, B, -3, -25);
+      ctx.restore();
+      return;
+    }
+
+    var lean = pose === "windup" ? -3 : pose === "hit" ? -4 : 0;
+
+    // legs
+    if (pose === "attack") {
+      r(ctx, -7, -14, 5, 14, B.armor); r(ctx, -9, -3, 6, 3, PAL.black);   // planted
+      r(ctx, 2, -12, 12, 4, B.armor);  r(ctx, 13, -13, 4, 4, PAL.black);  // lead strike
+    } else {
+      r(ctx, -8, -14, 5, 14, B.armor); r(ctx, -10, -3, 6, 3, PAL.black);
+      r(ctx, 3, -14, 5, 14, B.armor);  r(ctx, 3, -3, 6, 3, PAL.black);
+      r(ctx, -6, -16, 14, 4, B.plate); r(ctx, -6, -14, 14, 1, B.armor);   // tassets
+    }
+
+    // torso (dō) with lacing + obi + big sode
+    r(ctx, -6 + lean, -30, 14, 16, B.armor);
+    for (var ty = -28; ty <= -18; ty += 3) r(ctx, -6 + lean, ty, 14, 1, B.plate);
+    r(ctx, -6 + lean, -30, 3, 16, PAL.black);
+    r(ctx, -6 + lean, -16, 14, 2, B.gold);
+    r(ctx, -10 + lean, -31, 5, 7, B.plate); r(ctx, -10 + lean, -31, 5, 1, B.gold);
+    r(ctx, 5 + lean, -31, 5, 7, B.plate);   r(ctx, 5 + lean, -31, 5, 1, B.gold);
+
+    bossHead(ctx, B, -4 + lean, -42);
+
+    // arms per pose
+    if (pose === "attack") {
+      r(ctx, 6 + lean, -28, 10, 4, B.armor); r(ctx, 15 + lean, -29, 4, 4, B.skin); // punch
+      r(ctx, -8 + lean, -26, 4, 3, B.plate);
+    } else if (pose === "windup") {
+      r(ctx, -11 + lean, -28, 4, 6, B.armor); r(ctx, -12 + lean, -23, 3, 3, B.skin);
+      r(ctx, 4 + lean, -30, 4, 4, B.plate);
+    } else if (pose === "hit") {
+      r(ctx, -9 + lean, -30, 3, 5, B.plate); r(ctx, 6 + lean, -30, 3, 5, B.plate);
+    } else { // idle guard
+      r(ctx, 5 + lean, -28, 4, 6, B.armor); r(ctx, 5 + lean, -30, 4, 3, B.skin);
+      r(ctx, -7 + lean, -28, 4, 6, B.plate); r(ctx, -7 + lean, -30, 4, 3, B.skin);
+    }
+    ctx.restore();
+  }
+
   return {
     PAL: PAL,
     ENEMY_KITS: ENEMY_KITS,
     fighter: fighter,
     hawk: hawk,
+    boss: boss,
     shadow: shadow,
     spark: spark
   };

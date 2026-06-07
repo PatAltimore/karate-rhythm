@@ -47,6 +47,14 @@
   var HAWK_FLY_Y = 104;            // fixed height the hawk scrolls in at
   var HAWK_DIVE = 22;              // how far it swoops down to strike on its beat
 
+  // ---- Final boss duel -------------------------------------------------
+  var BOSS_HP = 30;                // clean strikes to fell the Shogun
+  var BOSS_X = 190;                // boss stands here (static screen)
+  var BOSS_HERO_X = 92;            // hero stands here facing the boss
+  var BLOCK_MISS_COST = 12;        // strength lost if you fail to block
+  var BOSS_WHIFF_COST = 5;         // strength lost on a mistimed tap
+  var DUEL_LEAD_BEATS = 4;         // beats of breathing room before the duel begins
+
   // ---- Rhythm charts ---------------------------------------------------
   // Foes arrive on a 16th-note grid (SUB = 4). Each one-bar "groove" is 16
   // slots (slot 0 = downbeat); grooves are composed into 4-bar phrases so the
@@ -78,12 +86,12 @@
     phrase(TRES, OFFB, CLAV, FILL), // 8
     phrase(CLAV, TRES, BRST, FILL)  // 9  hardest, still a groove
   ];
-  var HARD_PHRASES = [4, 5, 6, 7, 8, 9];
   var BAR_SLOTS = SUB * 4;          // 16
   var PHRASE_SLOTS = BAR_SLOTS * 4; // 64
+  var TOTAL_LEVELS = 10;
 
-  // Per level: [phraseIndex, travelBeats, scrollMul]. Beyond the table the run
-  // keeps going, cycling the hard grooves so it never settles into one loop.
+  // Per level: [phraseIndex, travelBeats, scrollMul]. Ten finite levels across
+  // three acts (1-3, 4-6, 7-10); Act III rows are the densest grooves.
   var LEVELS = [
     null,
     [0, 4.00, 1.00],
@@ -99,12 +107,8 @@
   ];
 
   function levelConfig(level) {
-    if (level > 0 && level < LEVELS.length) {
-      var r = LEVELS[level];
-      return { chart: PHRASES[r[0]], travelBeats: r[1], scrollMul: r[2] };
-    }
-    var pick = HARD_PHRASES[(level - LEVELS.length) % HARD_PHRASES.length];
-    return { chart: PHRASES[pick], travelBeats: 2.85, scrollMul: 1.5 };
+    var r = LEVELS[Math.max(1, Math.min(level, TOTAL_LEVELS))];
+    return { chart: PHRASES[r[0]], travelBeats: r[1], scrollMul: r[2] };
   }
   function levelForBeat(beat) {
     if (beat < INTRO_BEATS) return 1;
@@ -112,19 +116,31 @@
   }
   function boundaryBeat(level) { return INTRO_BEATS + (level - 1) * LEVEL_BEATS; }
 
+  // ---- Acts & checkpoints ----------------------------------------------
+  // Three acts (I: 1-3, II: 4-6, III: 7-10), then the boss is "act 4".
+  function actForLevel(lvl) { return lvl <= 3 ? 1 : lvl <= 6 ? 2 : 3; }
+  function actBaseLevel(act) { return act === 1 ? 1 : act === 2 ? 4 : 7; }
+  function actName(a) { return a === 1 ? "ACT I" : a === 2 ? "ACT II" : a === 3 ? "ACT III" : "FINAL"; }
+  function enemyRank(lvl) { return lvl <= 3 ? 0 : lvl <= 6 ? 1 : 2; }
+  // levelOffset shifts a checkpoint's first raw level up to its act base.
+  function effLevel(beat) { return levelForBeat(beat) + levelOffset; }
+  function runnerEndBeat() { return boundaryBeat(TOTAL_LEVELS + 1 - levelOffset); }
+
   var PLAYER_KIT = { gi: S.PAL.white, giSh: S.PAL.giSh, band: S.PAL.belt, hair: S.PAL.black };
 
   // ---- State ----------------------------------------------------------
   var canvas, ctx, hud, popupLayer, scoreEl, comboEl, fillEl, beatDot, levelEl, muteBtn;
-  var titleEl, gameoverEl;
+  var actEl, bossHud, bossFill, titleEl, gameoverEl, victoryEl;
 
-  var state = "title";            // title | playing | over
+  var state = "title";            // title | playing | boss | victory | over
   var paused = false;
   var viewScale = 1;
 
   var strength, score, kills, combo, bestCombo;
   var best = 0;
   var scrollX, elapsed, nextSlot, nextGateLevel, displayLevel;
+  var levelOffset = 0, checkpointAct = 1, displayAct = 1;
+  var boss = null, heroDuel = null;
   var enemies = [], sparks = [], gates = [], feathers = [];
   var player = { runPhase: 0, kicking: false, kickT: 0 };
 
@@ -173,7 +189,7 @@
   }
 
   // ---- Spawning & resolution ------------------------------------------
-  function spawnEnemy(arrivalBeat, travelBeats, kind) {
+  function spawnEnemy(arrivalBeat, travelBeats, kind, rank) {
     var isHawk = kind === "hawk";
     var kit = isHawk ? null : S.ENEMY_KITS[Math.floor(arrivalBeat * 2) % S.ENEMY_KITS.length];
     enemies.push({
@@ -183,6 +199,7 @@
       x: ENEMY_SPAWN_X, baseY: isHawk ? HAWK_FLY_Y : GROUND_Y,
       y: isHawk ? HAWK_FLY_Y : GROUND_Y, yOff: 0, bob: 0,
       state: "run", resolved: false, passed: false, leaping: false,
+      rank: rank || 0,
       runPhase: Math.random(), flapPhase: Math.random() * 2, kit: kit,
       vx: 0, vy: 0, rot: 0, spin: 0, deadT: 0
     });
@@ -267,51 +284,205 @@
     }
   }
 
+  // ---- Boss duel -------------------------------------------------------
+  // 8-beat call-and-response on a static screen. Most beats are STRIKE beats
+  // (the hero auto-punches on cymbal beats, kicks on drum beats); two are BLOCK
+  // beats where the boss attacks and a well-timed tap defends. At low health the
+  // boss attacks more often. One input: tap on the beat.
+  function bossBeatType(beatIdx, hpFrac) {
+    var m = ((beatIdx % 8) + 8) % 8;
+    if (m === 3 || m === 7) return "block";
+    if (hpFrac < 0.4 && (m === 1 || m === 5)) return "block"; // enraged
+    return (m % 2 === 0) ? "kick" : "punch";                  // drum vs cymbal
+  }
+
+  function enterBoss() {
+    if (state === "boss") return;
+    state = "boss";
+    checkpointAct = 4;
+    enemies.length = 0; gates.length = 0; feathers.length = 0; combo = 0;
+    boss = {
+      hp: BOSS_HP, pose: "idle", poseT: 0, bob: 0, hitFlash: 0,
+      startBeat: Math.ceil(audio.getCurrentBeat()) + DUEL_LEAD_BEATS,
+      checkBeat: 0, resolved: {}, defeated: false, defeatT: 0
+    };
+    heroDuel = { pose: "idle", poseT: 0 };
+    if (audio.setBossMode) audio.setBossMode(true);
+    popup("THE SHOGUN", "level", W / 2, 38);
+    flashT = 0.2;
+  }
+
+  function bossUpdate(dt) {
+    if (!boss || !audio.ready) return;
+    var nowBeat = audio.getCurrentBeat();
+    var bb = nowBeat - boss.startBeat;
+    boss.bob = Math.sin(nowBeat * Math.PI * 2) * 1.2;
+    if (boss.hitFlash > 0) boss.hitFlash -= dt;
+    if (heroDuel.poseT > 0 && (heroDuel.poseT -= dt) <= 0) heroDuel.pose = "idle";
+    if (boss.poseT > 0 && (boss.poseT -= dt) <= 0) boss.pose = "idle";
+
+    if (boss.defeated) {
+      boss.defeatT += dt;
+      if (boss.defeatT > 1.7) victory();
+      return;
+    }
+
+    var hpFrac = boss.hp / BOSS_HP;
+
+    // telegraph: wind up ~0.5 beat before a block beat
+    if (bb >= -1 && boss.pose === "idle") {
+      var nb = Math.ceil(bb - 0.0001);
+      if (bossBeatType(nb, hpFrac) === "block" && nb - bb < 0.5) {
+        boss.pose = "windup"; boss.poseT = 0.5;
+      }
+    }
+
+    // resolve beats past their hit window: an un-blocked attack lands
+    var lastResolvable = Math.floor(bb - HIT_GOOD / audio.beatDuration);
+    while (boss.checkBeat <= lastResolvable) {
+      var b = boss.checkBeat;
+      if (b >= 0 && !boss.resolved[b] && bossBeatType(b, hpFrac) === "block") {
+        boss.resolved[b] = true;
+        boss.pose = "attack"; boss.poseT = 0.3;
+        heroDuel.pose = "hit"; heroDuel.poseT = 0.3;
+        strength -= BLOCK_MISS_COST; combo = 0;
+        shake(4.5, 0.3); flashDanger = 0.18;
+        audio.playMiss();
+        if (strength <= 0) { gameOver(); return; }
+      }
+      boss.checkBeat++;
+    }
+  }
+
+  function bossAttack() {
+    if (state !== "boss" || !boss || boss.defeated) return;
+    var bb = audio.getCurrentBeat() - boss.startBeat;
+    if (bb < -0.5) return;                          // duel hasn't begun
+    var nb = Math.round(bb);
+    var errSec = Math.abs(bb - nb) * audio.beatDuration;
+    var hpFrac = boss.hp / BOSS_HP;
+
+    if (errSec <= HIT_GOOD && nb >= 0 && !boss.resolved[nb]) {
+      boss.resolved[nb] = true;
+      var typ = bossBeatType(nb, hpFrac);
+      if (typ === "block") {
+        heroDuel.pose = "block"; heroDuel.poseT = 0.26;
+        if (audio.playCymbal) audio.playCymbal();
+      } else {
+        var quality = errSec <= HIT_PERFECT ? "perfect" : "good";
+        heroDuel.pose = typ; heroDuel.poseT = 0.22;  // 'kick' (drum) or 'punch' (cymbal)
+        boss.hp -= 1;
+        boss.pose = "hit"; boss.poseT = 0.18; boss.hitFlash = 0.16;
+        addSpark(BOSS_X - 16, GROUND_Y - 20, quality);
+        score += quality === "perfect" ? 60 : 30;
+        combo++; if (combo > bestCombo) bestCombo = combo;
+        if (typ === "kick") { if (audio.playTaiko) audio.playTaiko(); }
+        else { if (audio.playCymbal) audio.playCymbal(); }
+        if (boss.hp <= 0) {
+          boss.hp = 0; boss.defeated = true; boss.defeatT = 0;
+          boss.pose = "hit"; score += 500; flashT = 0.3;
+        }
+      }
+    } else {
+      heroDuel.pose = "punch"; heroDuel.poseT = 0.2;
+      strength -= BOSS_WHIFF_COST; combo = 0;
+      audio.playMiss();
+      if (strength <= 0) gameOver();
+    }
+  }
+
+  function bossRender() {
+    BG.drawBoss(ctx, audio.ready ? audio.getCurrentBeat() : 0);
+    S.shadow(ctx, BOSS_HERO_X, GROUND_Y, 16, 0.3);
+    S.fighter(ctx, BOSS_HERO_X, GROUND_Y, {
+      facing: 1, pose: heroDuel ? heroDuel.pose : "idle", phase: 0, kit: PLAYER_KIT
+    });
+    var by = GROUND_Y - (boss ? boss.bob : 0);
+    S.shadow(ctx, BOSS_X, GROUND_Y, 26, 0.34);
+    S.boss(ctx, BOSS_X, by, {
+      facing: -1, pose: boss ? (boss.defeated ? "defeated" : boss.pose) : "idle"
+    });
+    if (boss && boss.hitFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = boss.hitFlash / 0.16 * 0.5;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(BOSS_X - 16, GROUND_Y - 46, 32, 46);
+      ctx.restore();
+    }
+    for (var s = 0; s < sparks.length; s++) S.spark(ctx, sparks[s].x, sparks[s].y, sparks[s].t, sparks[s].color);
+  }
+
+  function victory() {
+    if (state === "victory") return;
+    state = "victory";
+    audio.stop();
+    if (audio.playVictory) audio.playVictory();
+    best = Math.max(best, score);
+    try { localStorage.setItem("kr_best", String(best)); } catch (e) {}
+    var vScore = document.getElementById("vict-score");
+    var vBest = document.getElementById("vict-best");
+    if (vScore) vScore.textContent = score;
+    if (vBest) vBest.textContent = best;
+    var vs = document.getElementById("victory");
+    if (vs) vs.classList.remove("hidden");
+  }
+
   // ---- Update ---------------------------------------------------------
   function update(dt) {
-    var curBeat = (audio.ready && state === "playing") ? audio.getCurrentBeat() : 0;
-    var scrollMul = (state === "playing") ? levelConfig(levelForBeat(curBeat)).scrollMul : 1;
+    var playing = state === "playing";
+    var curBeat = (audio.ready && (playing || state === "boss")) ? audio.getCurrentBeat() : 0;
+    var scrollMul = playing ? levelConfig(effLevel(curBeat)).scrollMul : 1;
 
-    // The world always scrolls and the hero always runs (even on the title).
-    scrollX += SCROLL_BASE * dt * scrollMul;
+    // World scrolls while running (or idling on the title); frozen for the duel.
+    if (state === "title") scrollX += SCROLL_BASE * dt;
+    else if (playing) scrollX += SCROLL_BASE * dt * scrollMul;
     player.runPhase += dt * 7;
     if (player.kicking) {
       player.kickT += dt;
       if (player.kickT >= KICK_DURATION) player.kicking = false;
     }
 
-    if (state === "playing" && audio.ready) {
+    if (state === "boss") bossUpdate(dt);
+
+    if (playing && audio.ready) {
       elapsed += dt;
       var now = audio.currentTime;
 
-      // Spawn any foes whose march-in time has arrived (16th-note slots). Each
-      // level's 4-bar phrase is indexed from where that level began, so it
-      // always plays bar 0 -> 3 and its fill bar leads into the next level.
+      // Past level 10 -> hand off to the static boss duel.
+      if (effLevel(curBeat) > TOTAL_LEVELS) enterBoss();
+
+      var el = effLevel(curBeat);
+      displayAct = actForLevel(Math.min(el, TOTAL_LEVELS));
+      if (el >= 4 && checkpointAct < 2) checkpointAct = 2;
+      if (el >= 7 && checkpointAct < 3) checkpointAct = 3;
+
+      // Spawn foes whose march-in time has arrived (16th-note slots). The phrase
+      // is selected by effective level; foes gain helmets/armour by act rank.
       var guard = 0;
       while (true) {
         var arrivalBeat = nextSlot / SUB;
-        var lvl = levelForBeat(arrivalBeat);
-        var cfg = arrivalBeat < INTRO_BEATS ? null : levelConfig(lvl);
+        var rl = levelForBeat(arrivalBeat);
+        var al = rl + levelOffset;
+        var cfg = (arrivalBeat < INTRO_BEATS || al > TOTAL_LEVELS) ? null : levelConfig(al);
         var travel = cfg ? cfg.travelBeats : 4.0;
         if (now < audio.getBeatTime(arrivalBeat - travel)) break;
         if (cfg) {
-          var rel = nextSlot - boundaryBeat(lvl) * SUB;
+          var rel = nextSlot - boundaryBeat(rl) * SUB;
           var idx = ((rel % PHRASE_SLOTS) + PHRASE_SLOTS) % PHRASE_SLOTS;
           if (cfg.chart[idx] === 1) {
-            // From level 2 on, the strong downbeats (where a cymbal belongs)
-            // arrive as a diving hawk instead of a ground foe.
-            var hawk = lvl >= 2 && (idx === 0 || idx === BAR_SLOTS * 2);
-            spawnEnemy(arrivalBeat, travel, hawk ? "hawk" : "foe");
+            var isHawk = al >= 2 && (idx === 0 || idx === BAR_SLOTS * 2);
+            spawnEnemy(arrivalBeat, travel, isHawk ? "hawk" : "foe", enemyRank(al));
           }
         }
         nextSlot++;
         if (++guard > 512) break;
       }
 
-      // Schedule a torii gate ahead of each level boundary.
+      // Torii gate ahead of each level boundary (through level 10).
       guard = 0;
-      while (curBeat >= boundaryBeat(nextGateLevel) - GATE_LEAD_BEATS) {
-        spawnGate(nextGateLevel);
+      while (curBeat >= boundaryBeat(nextGateLevel) - GATE_LEAD_BEATS &&
+             nextGateLevel + levelOffset <= TOTAL_LEVELS) {
+        spawnGate(nextGateLevel + levelOffset);
         nextGateLevel++;
         if (++guard > 64) break;
       }
@@ -360,7 +531,13 @@
       if (!g.triggered && g.screenX <= PLAYER_X) {
         g.triggered = true;
         displayLevel = g.level;
-        popup("LEVEL " + g.level, "level", W / 2, 44);
+        var ga = actForLevel(g.level);
+        if (g.level === actBaseLevel(ga) && ga > 1) {
+          displayAct = ga;
+          popup(actName(ga), "level", W / 2, 40);
+        } else {
+          popup("LEVEL " + g.level, "level", W / 2, 44);
+        }
         flashT = Math.max(flashT, 0.14);
       }
       if (g.screenX < -60) gates.splice(gi, 1);
@@ -400,7 +577,7 @@
     S.fighter(ctx, e.x, dead ? e.y : e.y + off, {
       facing: -1,
       pose: dead ? "hit" : (e.leaping ? "kick" : "run"),
-      phase: e.runPhase, kit: e.kit, rot: e.rot
+      phase: e.runPhase, kit: e.kit, rot: e.rot, rank: e.rank
     });
   }
 
@@ -439,18 +616,21 @@
 
     ctx.save();
     ctx.translate(Math.round(ox), Math.round(oy));
-    BG.draw(ctx, scrollX);
 
-    // torii gates sit between the scenery and the fighters, so the hero runs
-    // through them (framed by the pillars, the lintel passing overhead).
-    for (var gi = 0; gi < gates.length; gi++) BG.torii(ctx, gates[gi].screenX, GROUND_Y);
-
-    enemies.sort(function (a, b) { return b.x - a.x; });
-    for (var i = 0; i < enemies.length; i++) drawFoe(enemies[i]);
-    drawPlayer();
-    for (var s = 0; s < sparks.length; s++) S.spark(ctx, sparks[s].x, sparks[s].y, sparks[s].t, sparks[s].color);
-    for (var ff = 0; ff < feathers.length; ff++) drawFeather(feathers[ff]);
-    ctx.globalAlpha = 1;
+    if (state === "boss" || state === "victory") {
+      bossRender();
+    } else {
+      BG.draw(ctx, scrollX);
+      // torii gates sit between the scenery and the fighters, so the hero runs
+      // through them (framed by the pillars, the lintel passing overhead).
+      for (var gi = 0; gi < gates.length; gi++) BG.torii(ctx, gates[gi].screenX, GROUND_Y);
+      enemies.sort(function (a, b) { return b.x - a.x; });
+      for (var i = 0; i < enemies.length; i++) drawFoe(enemies[i]);
+      drawPlayer();
+      for (var s = 0; s < sparks.length; s++) S.spark(ctx, sparks[s].x, sparks[s].y, sparks[s].t, sparks[s].color);
+      for (var ff = 0; ff < feathers.length; ff++) drawFeather(feathers[ff]);
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
 
     if (flashT > 0) {
@@ -467,13 +647,23 @@
   function updateHUD() {
     scoreEl.textContent = score;
     comboEl.textContent = combo > 1 ? "x" + combo : "";
-    levelEl.textContent = displayLevel;
+
+    var inBoss = state === "boss" || state === "victory";
+    if (actEl) actEl.textContent = inBoss ? "FINAL" : actName(displayAct);
+    levelEl.textContent = inBoss ? "BOSS" : displayLevel;
 
     var pct = clamp(strength, 0, 100);
     fillEl.style.width = pct + "%";
     if (pct < 30) fillEl.classList.add("low"); else fillEl.classList.remove("low");
 
-    if (audio.ready && state === "playing") {
+    if (bossHud) {
+      bossHud.style.display = inBoss ? "" : "none";
+      if (inBoss && boss && bossFill) {
+        bossFill.style.width = clamp(boss.hp / BOSS_HP * 100, 0, 100) + "%";
+      }
+    }
+
+    if (audio.ready && (state === "playing" || state === "boss")) {
       var beat = audio.getCurrentBeat();
       var frac = beat - Math.floor(beat);
       var pulse = 1 + 0.7 * (1 - clamp(frac / 0.4, 0, 1));
@@ -488,19 +678,33 @@
     score = 0; kills = 0; combo = 0; bestCombo = 0;
     enemies.length = 0; sparks.length = 0; gates.length = 0; feathers.length = 0;
     scrollX = 0; elapsed = 0; nextSlot = 0; nextGateLevel = 2; displayLevel = 1;
+    boss = null; heroDuel = null;
     player.kicking = false; player.kickT = 0;
     shakeT = 0; flashT = 0; flashDanger = 0;
   }
 
-  function startGame() {
+  // act: 1-3 start that act of the runner; 4 retries the boss directly.
+  function startGame(act) {
+    act = act || 1;
     resetState();
     titleEl.classList.add("hidden");
     gameoverEl.classList.add("hidden");
+    if (victoryEl) victoryEl.classList.add("hidden");
     hud.style.visibility = "visible";
-
-    state = "playing";
-    audio.start();
     lastTime = performance.now();
+
+    audio.start();
+    if (audio.setBossMode) audio.setBossMode(act === 4);
+
+    if (act === 4) {
+      enterBoss();
+    } else {
+      levelOffset = actBaseLevel(act) - 1;
+      checkpointAct = act;
+      displayAct = act;
+      displayLevel = actBaseLevel(act);
+      state = "playing";
+    }
   }
 
   function gameOver() {
@@ -508,6 +712,7 @@
     state = "over";
     strength = 0;
     audio.stop();
+    if (audio.setBossMode) audio.setBossMode(false);
     audio.playGameOver();
 
     best = Math.max(best, score);
@@ -517,7 +722,9 @@
     document.getElementById("best-score").textContent = best;
     document.getElementById("final-kills").textContent = kills;
     document.getElementById("final-combo").textContent = bestCombo;
-    document.getElementById("final-level").textContent = displayLevel;
+    document.getElementById("final-level").textContent = checkpointAct === 4 ? "BOSS" : displayLevel;
+    var rb = document.getElementById("restart-btn");
+    if (rb) rb.textContent = checkpointAct === 1 ? "► AGAIN" : "► " + actName(checkpointAct) + " RETRY";
     gameoverEl.classList.remove("hidden");
   }
 
@@ -540,27 +747,36 @@
   }
 
   // ---- Input ----------------------------------------------------------
+  function tapAction() {
+    if (state === "playing") attack();
+    else if (state === "boss") bossAttack();
+    else if (state === "over") startGame(checkpointAct);
+    else startGame(1);                 // title / victory -> fresh run
+  }
+
   function bindInput() {
     var stage = document.getElementById("game");
     stage.addEventListener("pointerdown", function (e) {
-      if (state !== "playing") return;
       if (e.target.closest && e.target.closest("#mute-btn")) return;
-      e.preventDefault();
-      attack();
+      if (e.target.closest && e.target.closest(".btn")) return; // let buttons handle their click
+      if (state === "playing" || state === "boss") { e.preventDefault(); tapAction(); }
     });
 
     window.addEventListener("keydown", function (e) {
       if (e.code === "Space" || e.code === "Enter") {
         e.preventDefault();
-        if (state === "playing") attack();
-        else startGame();
+        tapAction();
       } else if (e.key === "m" || e.key === "M") {
         toggleMute();
+      } else if (e.key === "b" || e.key === "B") {
+        startGame(4); // DEBUG: jump straight to the boss duel
       }
     });
 
-    document.getElementById("start-btn").addEventListener("click", startGame);
-    document.getElementById("restart-btn").addEventListener("click", startGame);
+    document.getElementById("start-btn").addEventListener("click", function () { startGame(1); });
+    document.getElementById("restart-btn").addEventListener("click", function () { startGame(checkpointAct); });
+    var vb = document.getElementById("victory-btn");
+    if (vb) vb.addEventListener("click", function () { startGame(1); });
     muteBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       toggleMute();
@@ -570,10 +786,10 @@
     document.addEventListener("visibilitychange", function () {
       if (document.hidden) {
         paused = true;
-        if (state === "playing") audio.suspend();
+        if (state === "playing" || state === "boss") audio.suspend();
       } else {
         paused = false;
-        if (state === "playing") audio.resume();
+        if (state === "playing" || state === "boss") audio.resume();
         lastTime = performance.now();
       }
     });
@@ -608,14 +824,18 @@
     fillEl = document.getElementById("strength-fill");
     beatDot = document.getElementById("beat-dot");
     levelEl = document.getElementById("level");
+    actEl = document.getElementById("act");
+    bossHud = document.getElementById("boss-hud");
+    bossFill = document.getElementById("boss-fill");
     muteBtn = document.getElementById("mute-btn");
     titleEl = document.getElementById("title");
     gameoverEl = document.getElementById("gameover");
+    victoryEl = document.getElementById("victory");
 
     try { best = parseInt(localStorage.getItem("kr_best") || "0", 10) || 0; } catch (e) { best = 0; }
 
-    // The music picks a fresh theme per level: map musical beat -> section.
-    audio.setSectionAt(function (beat) { return levelForBeat(beat) - 1; });
+    // The music picks a theme per effective level (act-aware via levelOffset).
+    audio.setSectionAt(function (beat) { return effLevel(beat) - 1; });
 
     resetState();
     hud.style.visibility = "hidden";

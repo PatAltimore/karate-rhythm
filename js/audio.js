@@ -40,6 +40,7 @@ KR.audio = (function () {
   var TICK_MS = 25;
   var running = false;
   var muted = false;
+  var bossMode = false;
 
   // Injected by the game: beat -> section index (0-based). Defaults below.
   var sectionResolver = null;
@@ -65,8 +66,16 @@ KR.audio = (function () {
     { name: "Descent", bars: [{ pc: 0, q: "min" }, { pc: 10, q: "maj" }, { pc: 8, q: "maj" }, { pc: 7, q: "maj" }], lead: "down", bass: "octave", wave: "sawtooth" },
     { name: "Tempest", bars: [{ pc: 5, q: "min" }, { pc: 1, q: "maj" }, { pc: 8, q: "maj" }, { pc: 3, q: "maj" }], lead: "wide", bass: "octave", wave: "square" },
     { name: "Shadow",  bars: [{ pc: 3, q: "min" }, { pc: 11, q: "maj" }, { pc: 6, q: "maj" }, { pc: 1, q: "maj" }], lead: "roll", bass: "root",   wave: "triangle" },
-    { name: "Ascend",  bars: [{ pc: 7, q: "min" }, { pc: 3, q: "maj" }, { pc: 10, q: "maj" }, { pc: 5, q: "maj" }], lead: "wide", bass: "walk",   wave: "sawtooth" }
+    { name: "Ascend",  bars: [{ pc: 7, q: "min" }, { pc: 3, q: "maj" }, { pc: 10, q: "maj" }, { pc: 5, q: "maj" }], lead: "wide", bass: "walk",   wave: "sawtooth" },
+    // Act III — darker: Neapolitan & tritone harmony, low gritty saw lead.
+    { name: "Onslaught", bars: [{ pc: 0, q: "min" }, { pc: 1, q: "maj" }, { pc: 8, q: "maj" }, { pc: 7, q: "maj" }], lead: "wide", bass: "octave", wave: "sawtooth", dark: 1 },
+    { name: "Abyss",     bars: [{ pc: 0, q: "min" }, { pc: 6, q: "maj" }, { pc: 10, q: "min" }, { pc: 0, q: "min" }], lead: "roll", bass: "octave", wave: "sawtooth", dark: 1 },
+    // The Shogun — ominous boss theme (tonic pedal, tritone stabs).
+    { name: "Shogun",    bars: [{ pc: 0, q: "min" }, { pc: 0, q: "min" }, { pc: 6, q: "maj" }, { pc: 7, q: "maj" }], lead: "wide", bass: "octave", wave: "sawtooth", dark: 2 }
   ];
+  // Effective level (section 0-9) -> theme index. Acts darken: I,II light; III dark.
+  var SECTION_THEME = [0, 1, 0, 2, 3, 4, 5, 6, 5, 6];
+  var BOSS_THEME = 7;
 
   function leadShape(style, t) {
     switch (style) {
@@ -210,34 +219,62 @@ KR.audio = (function () {
     o.stop(t + dur + 0.02); o2.stop(t + dur + 0.02);
   }
 
+  // Dissonant low chord stab (root + tritone + fifth) for dark/boss downbeats.
+  function stab(t, pc, amt) {
+    var notes = [pc, pc + 6, pc + 7];
+    var peak = 0.1 + 0.04 * (amt || 1);
+    for (var i = 0; i < notes.length; i++) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sawtooth";
+      o.frequency.value = octShift(pcFreq(reduce(notes[i]), 3), 90, 220);
+      g.gain.setValueAtTime(peak, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      o.connect(g); g.connect(musicGain);
+      o.start(t); o.stop(t + 0.2);
+    }
+  }
+
   // ---- Sequencer -------------------------------------------------------
   function scheduleStep(step, t) {
     var beat = step / STEPS_PER_BEAT;
     var section = sectionFor(beat);
-    var theme = THEMES[section % THEMES.length];
-    var intensity = Math.min(4, section);
+    var theme = bossMode
+      ? THEMES[BOSS_THEME]
+      : THEMES[SECTION_THEME[Math.max(0, Math.min(section, SECTION_THEME.length - 1))]];
+    var dark = theme.dark || 0;
+    var intensity = bossMode ? 4 : Math.min(4, section);
 
     var inBar = step % 16;            // 16th within the bar
     var bar = Math.floor((step % 64) / 16); // which of the 4 chords
     var chord = theme.bars[bar];
     var t3 = triad(chord.pc, chord.q);
 
-    // Section change → crash on the new downbeat.
-    if (section !== sectionFor((step - 1) / STEPS_PER_BEAT)) crash(t);
+    // Section change → crash on the new downbeat (not during the boss).
+    if (!bossMode && section !== sectionFor((step - 1) / STEPS_PER_BEAT)) crash(t);
 
     // Drums
-    if (inBar === 0 || inBar === 8) kick(t);
-    if (intensity >= 2 && inBar === 10) kick(t);
-    if (inBar === 4 || inBar === 12) snare(t, false);
-    if (intensity >= 3 && inBar === 14) snare(t, true);
-    if (intensity >= 2) hat(t, inBar % 4 === 0);       // 16ths
-    else if (inBar % 2 === 0) hat(t, inBar % 4 === 0); // 8ths
-    if (intensity >= 3 && inBar === 0) openhat(t);
-
-    // Tom fill across the second half of the last bar before a section change.
-    if (inBar >= 8 && inBar % 2 === 0 && sectionFor(beat + 4) !== section) {
-      tom(t, 220 - (inBar - 8) * 14);
+    if (bossMode) {
+      // Drum on the even beats (your kicks), cymbal on the odd beats (your
+      // punches) — reinforcing the duel's drum=kick / cymbal=punch mapping.
+      if (inBar === 0 || inBar === 8) kick(t);
+      if (inBar === 6 || inBar === 10 || inBar === 14) kick(t);
+      if (inBar === 4 || inBar === 12) openhat(t);
+      hat(t, inBar % 4 === 0);
+    } else {
+      if (inBar === 0 || inBar === 8) kick(t);
+      if (intensity >= 2 && inBar === 10) kick(t);
+      if (inBar === 4 || inBar === 12) snare(t, false);
+      if (intensity >= 3 && inBar === 14) snare(t, true);
+      if (intensity >= 2) hat(t, inBar % 4 === 0);       // 16ths
+      else if (inBar % 2 === 0) hat(t, inBar % 4 === 0); // 8ths
+      if (intensity >= 3 && inBar === 0) openhat(t);
+      if (inBar >= 8 && inBar % 2 === 0 && sectionFor(beat + 4) !== section) {
+        tom(t, 220 - (inBar - 8) * 14); // fill before a section change
+      }
     }
+
+    // Dissonant stab on each downbeat in the dark act / the boss fight.
+    if ((dark >= 1 || bossMode) && inBar === 0) stab(t, chord.pc, dark + (bossMode ? 1 : 0));
 
     // Bass
     if (theme.bass === "octave") {
@@ -253,11 +290,11 @@ KR.audio = (function () {
       if (inBar % 4 === 0) bass(octShift(pcFreq(chord.pc, 2), 70, 165), t, beatDuration * 0.9);
     }
 
-    // Lead arpeggio on every 8th note
+    // Lead arpeggio on every 8th note (an octave lower when dark/menacing)
     if (inBar % 2 === 0) {
       var shape = leadShape(theme.lead, t3);
       var pc = shape[inBar / 2];
-      lead(pcFreq(reduce(pc), 4), t, beatDuration * 0.45, theme.wave);
+      lead(pcFreq(reduce(pc), dark >= 1 ? 3 : 4), t, beatDuration * 0.45, theme.wave);
     }
   }
 
@@ -386,6 +423,41 @@ KR.audio = (function () {
     }
   }
 
+  // Deep taiko boom — the hero's KICK in the boss duel (drum = kick).
+  function playTaiko() {
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(185, t);
+    o.frequency.exponentialRampToValueAtTime(54, t + 0.18);
+    g.gain.setValueAtTime(0.95, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    o.connect(g); g.connect(sfxGain);
+    o.start(t); o.stop(t + 0.32);
+    var n = ctx.createBufferSource(); n.buffer = noiseBuffer;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.3, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    n.connect(ng); ng.connect(sfxGain); n.start(t); n.stop(t + 0.06);
+  }
+
+  // Triumphant fanfare when the Shogun falls.
+  function playVictory() {
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    var seq = [392, 523.25, 659.25, 783.99, 1046.5];
+    for (var i = 0; i < seq.length; i++) {
+      var t = t0 + i * 0.13;
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "square"; o.frequency.value = seq[i];
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.3, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+      o.connect(g); g.connect(sfxGain);
+      o.start(t); o.stop(t + 0.47);
+    }
+  }
+
   // ---- Transport -------------------------------------------------------
   function start() {
     init();
@@ -412,6 +484,12 @@ KR.audio = (function () {
   }
   function toggleMute() { muted = !muted; applyMute(); return muted; }
 
+  function setBossMode(b) {
+    b = !!b;
+    if (b && !bossMode && ctx) crash(ctx.currentTime);  // crash into the duel
+    bossMode = b;
+  }
+
   // ---- Public API ------------------------------------------------------
   return {
     init: init,
@@ -421,9 +499,12 @@ KR.audio = (function () {
     resume: resume,
     playHit: playHit,
     playCymbal: playCymbal,
+    playTaiko: playTaiko,
     playMiss: playMiss,
     playGameOver: playGameOver,
+    playVictory: playVictory,
     toggleMute: toggleMute,
+    setBossMode: setBossMode,
     setSectionAt: function (fn) { sectionResolver = fn; },
     get muted() { return muted; },
     get bpm() { return BPM; },

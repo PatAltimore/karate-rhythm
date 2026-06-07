@@ -387,5 +387,66 @@ KR.bg = (function () {
     ctx.fillStyle = K;  ctx.fillRect(cx - 5, top + 9, 10, 1);
   }
 
-  return { draw: draw, torii: torii, WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_Y: GROUND_Y };
+  // ---- Static boss arena (no scroll): dark palace under a blood moon ----
+  function bossPillar(ctx, cx, fy) {
+    ctx.fillStyle = "#7a2418"; ctx.fillRect(cx - 5, 18, 10, fy - 18);
+    ctx.fillStyle = "#5a1810"; ctx.fillRect(cx - 5, 18, 3, fy - 18);
+    ctx.fillStyle = "#9a3422"; ctx.fillRect(cx + 3, 18, 1, fy - 18);
+    ctx.fillStyle = "#2a0f0a"; ctx.fillRect(cx - 7, 16, 14, 4); ctx.fillRect(cx - 7, fy - 4, 14, 4);
+  }
+  function bossBanner(ctx, cx, top) {
+    ctx.fillStyle = "#2a0f0a"; ctx.fillRect(cx - 6, top, 12, 2);
+    ctx.fillStyle = "#6a1a18"; ctx.fillRect(cx - 5, top + 2, 10, 34);
+    ctx.fillStyle = "#8a2a26"; ctx.fillRect(cx - 5, top + 2, 1, 34);
+    ctx.fillStyle = "#d8b048";
+    ctx.fillRect(cx - 2, top + 10, 4, 4); ctx.fillRect(cx - 1, top + 16, 2, 7);
+  }
+  function bossTorch(ctx, x, y, fl) {
+    ctx.fillStyle = "#2a1a0e"; ctx.fillRect(x - 1, y, 2, 14);
+    var glow = ctx.createRadialGradient(x, y - 2, 1, x, y - 2, 11);
+    glow.addColorStop(0, "rgba(255,200,120,0.7)"); glow.addColorStop(1, "rgba(255,140,60,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y - 2, 11, 0, Math.PI * 2); ctx.fill();
+    var h = 6 + fl * 4;
+    ctx.fillStyle = "#ffcf6a"; ctx.fillRect(x - 2, y - h, 4, h);
+    ctx.fillStyle = "#ff8a3a"; ctx.fillRect(x - 1, y - h + 2, 2, h - 2);
+  }
+
+  function drawBoss(ctx, beat) {
+    var g = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    g.addColorStop(0, "#140e1e"); g.addColorStop(0.6, "#1e1426"); g.addColorStop(1, "#2a1620");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // blood moon through a round window
+    var mx = 140, my = 56;
+    var mg = ctx.createRadialGradient(mx, my, 4, mx, my, 32);
+    mg.addColorStop(0, "rgba(210,100,80,0.55)"); mg.addColorStop(1, "rgba(120,40,40,0)");
+    ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, 32, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#cf7458"; ctx.beginPath(); ctx.arc(mx, my, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#a85544"; ctx.beginPath(); ctx.arc(mx + 4, my - 3, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#0e0a14"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(mx, my, 19, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(mx - 19, my); ctx.lineTo(mx + 19, my);
+    ctx.moveTo(mx, my - 19); ctx.lineTo(mx, my + 19); ctx.stroke();
+
+    // floor
+    var fy = GROUND_Y;
+    var fg = ctx.createLinearGradient(0, fy, 0, HEIGHT);
+    fg.addColorStop(0, "#3a2418"); fg.addColorStop(1, "#160d0a");
+    ctx.fillStyle = fg; ctx.fillRect(0, fy, WIDTH, HEIGHT - fy);
+    ctx.fillStyle = "#5a3a22"; ctx.fillRect(0, fy, WIDTH, 1);
+    ctx.fillStyle = "#241509";
+    for (var x = 0; x < WIDTH; x += 20) ctx.fillRect(x, fy + 3, 1, HEIGHT - fy - 3);
+
+    bossPillar(ctx, 22, fy); bossPillar(ctx, WIDTH - 22, fy);
+    bossBanner(ctx, 54, 26); bossBanner(ctx, WIDTH - 54, 26);
+    var fl = 0.5 + 0.5 * Math.abs(Math.sin(beat * 3.1));
+    bossTorch(ctx, 40, 100, fl); bossTorch(ctx, WIDTH - 40, 100, fl);
+  }
+
+  return {
+    draw: draw, torii: torii, drawBoss: drawBoss,
+    WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_Y: GROUND_Y
+  };
 })();
