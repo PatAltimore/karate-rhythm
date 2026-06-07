@@ -35,7 +35,6 @@ html, body {
   justify-content: center;
   background:
     radial-gradient(circle at 50% 40%, #14141f 0%, #05050a 75%, #000 100%);
-  cursor: crosshair;
 }
 
 #screen {

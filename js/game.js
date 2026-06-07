@@ -40,6 +40,10 @@
   var JUMP_HEIGHT = 17;
   var GRAVITY = 540;
 
+  var FOE_JUMP_HEIGHT = 13;        // foe's own jump-kick arc
+  var LEAP_LEAD_BEATS = 0.45;      // foe launches its kick this far before arrival
+  var LEAP_FOLLOW_BEATS = 0.45;    // ...and comes down this far after (apex = arrival)
+
   // ---- Rhythm charts ---------------------------------------------------
   // Foes arrive on a 16th-note grid (SUB = 4). Each one-bar "groove" is 16
   // slots (slot 0 = downbeat); grooves are composed into 4-bar phrases so the
@@ -152,8 +156,8 @@
     enemies.push({
       arrivalTime: audio.getBeatTime(arrivalBeat),
       spawnTime: audio.getBeatTime(arrivalBeat - travelBeats),
-      x: ENEMY_SPAWN_X, y: GROUND_Y,
-      state: "run", resolved: false, passed: false,
+      x: ENEMY_SPAWN_X, y: GROUND_Y, yOff: 0,
+      state: "run", resolved: false, passed: false, leaping: false,
       runPhase: Math.random(), kit: kit,
       vx: 0, vy: 0, rot: 0, spin: 0, deadT: 0
     });
@@ -167,6 +171,7 @@
     e.resolved = true;
     e.state = "dead";
     e.deadT = 0;
+    e.y = GROUND_Y + (e.yOff || 0);   // knock back from wherever it was mid-leap
     e.vx = 80 + Math.random() * 60;
     e.vy = -150 - Math.random() * 50;
     e.spin = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 4);
@@ -179,7 +184,7 @@
     score += Math.round(base * mult);
     strength = Math.min(100, strength + HIT_HEAL);
 
-    addSpark(76, GROUND_Y - 12, quality);
+    addSpark(76, GROUND_Y - 16, quality);
     flashT = 0.12;
     popup(quality === "perfect" ? "PERFECT" : "GOOD", quality, e.x, GROUND_Y - 30);
     if (combo > 1 && combo % 5 === 0) popup(combo + " COMBO!", "good", PLAYER_X + 18, GROUND_Y - 48);
@@ -278,6 +283,17 @@
           var p = (now - e.spawnTime) / (e.arrivalTime - e.spawnTime);
           e.x = lerp(ENEMY_SPAWN_X, ENEMY_CONTACT_X, p);
           e.runPhase += dt * 6;
+          // Reaching striking range, the foe leaps into a jump-kick that peaks
+          // on its arrival beat — so it meets the hero's kick in mid-air.
+          var bRel = (now - e.arrivalTime) / audio.beatDuration; // beats from arrival
+          if (bRel > -LEAP_LEAD_BEATS && bRel < LEAP_FOLLOW_BEATS) {
+            e.leaping = true;
+            var lp = (bRel + LEAP_LEAD_BEATS) / (LEAP_LEAD_BEATS + LEAP_FOLLOW_BEATS);
+            e.yOff = -Math.sin(clamp(lp, 0, 1) * Math.PI) * FOE_JUMP_HEIGHT;
+          } else {
+            e.leaping = false;
+            e.yOff = 0;
+          }
           if (!e.resolved && now > e.arrivalTime + HIT_GOOD) registerPass(e);
           if (e.x < -30) enemies.splice(i, 1);
         } else { // dead — tumble away
@@ -315,10 +331,12 @@
 
   // ---- Render ---------------------------------------------------------
   function drawFoe(e) {
-    if (e.state === "run") S.shadow(ctx, e.x, GROUND_Y, 16, 0.28);
-    S.fighter(ctx, e.x, e.y, {
+    var dead = e.state === "dead";
+    var off = e.yOff || 0;
+    if (!dead) S.shadow(ctx, e.x, GROUND_Y, 16, 0.28 * (1 + off / FOE_JUMP_HEIGHT * 0.6));
+    S.fighter(ctx, e.x, dead ? e.y : e.y + off, {
       facing: -1,
-      pose: e.state === "dead" ? "hit" : "run",
+      pose: dead ? "hit" : (e.leaping ? "kick" : "run"),
       phase: e.runPhase, kit: e.kit, rot: e.rot
     });
   }

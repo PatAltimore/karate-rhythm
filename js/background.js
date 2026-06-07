@@ -14,6 +14,7 @@ KR.bg = (function () {
   "use strict";
 
   var WIDTH = 280, HEIGHT = 192, GROUND_Y = 150;
+  var WATER_Y = GROUND_Y + 14;   // river surface sits just below the bridge deck
 
   function hash(n, seed) {
     var x = Math.sin(n * 12.9898 + seed * 78.233) * 43758.5453;
@@ -263,36 +264,81 @@ KR.bg = (function () {
     }
   }
 
-  // ---- Ground ----------------------------------------------------------
-  function ground(ctx, scroll) {
-    var g = ctx.createLinearGradient(0, GROUND_Y, 0, HEIGHT);
-    g.addColorStop(0, "#3c2c1c");
-    g.addColorStop(1, "#15100a");
+  // ---- Wooden bridge the hero runs along (parallax 1.0) ----------------
+  function bridge(ctx, scroll) {
+    var top = GROUND_Y, bot = GROUND_Y + 12, beam = WATER_Y; // 150 / 162 / 164
+    var g = ctx.createLinearGradient(0, top, 0, bot);
+    g.addColorStop(0, "#7a5630");
+    g.addColorStop(1, "#553b20");
     ctx.fillStyle = g;
-    ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
+    ctx.fillRect(0, top, WIDTH, bot - top);
 
-    // sunset-lit top rim
-    ctx.fillStyle = "#5a3f24";
-    ctx.fillRect(0, GROUND_Y, WIDTH, 2);
-    ctx.fillStyle = "#b9824a";
-    ctx.fillRect(0, GROUND_Y, WIDTH, 1);
+    // sunlit front edge of the deck
+    ctx.fillStyle = "#a8763e";
+    ctx.fillRect(0, top, WIDTH, 1);
 
-    // faint flagstone seams (mid layer)
-    var sp = 22, off = (scroll % sp);
-    ctx.fillStyle = "#241a10";
+    // cross-plank seams + plank highlights, scrolling with the world
+    var sp = 11, off = (scroll % sp);
     for (var x = -off; x < WIDTH; x += sp) {
-      ctx.fillRect(Math.round(x), GROUND_Y + 6, 1, HEIGHT - GROUND_Y - 6);
-    }
-    ctx.fillStyle = "#48351f";
-    for (var x2 = -off; x2 < WIDTH; x2 += sp) {
-      ctx.fillRect(Math.round(x2 + 4), GROUND_Y + 10, 3, 1);
+      ctx.fillStyle = "#3a2814";
+      ctx.fillRect(Math.round(x), top, 1, bot - top);
+      ctx.fillStyle = "#8a6236";
+      ctx.fillRect(Math.round(x) + 2, top + 2, 1, bot - top - 3);
     }
 
-    // fast foreground speed-streaks
-    var sp2 = 30, off2 = ((scroll * 1.6) % sp2);
-    ctx.fillStyle = "#543c22";
-    for (var x3 = -off2; x3 < WIDTH; x3 += sp2) {
-      ctx.fillRect(Math.round(x3), HEIGHT - 7, 12, 2);
+    // front support beam (the thickness of the bridge)
+    ctx.fillStyle = "#2e1f12";
+    ctx.fillRect(0, bot, WIDTH, beam - bot);
+  }
+
+  // ---- River in the foreground (fastest parallax = closest) ------------
+  function water(ctx, scroll) {
+    var top = WATER_Y;
+    var g = ctx.createLinearGradient(0, top, 0, HEIGHT);
+    g.addColorStop(0.0, "#6e5566");   // warm sky reflected at the surface
+    g.addColorStop(0.4, "#3c4866");
+    g.addColorStop(1.0, "#1b2742");   // deep water
+    ctx.fillStyle = g;
+    ctx.fillRect(0, top, WIDTH, HEIGHT - top);
+
+    ctx.fillStyle = "#b89080";
+    ctx.fillRect(0, top, WIDTH, 1);   // bright surface line
+
+    // layered ripples flowing fast (nearer rows move faster)
+    var rows = [
+      [top + 4, 1.5, "#8a6f78", 22, 8],
+      [top + 9, 1.8, "#566486", 28, 10],
+      [top + 15, 2.1, "#384a6e", 32, 12],
+      [top + 21, 2.4, "#283a58", 36, 14]
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i], off = (scroll * r[1]) % r[3];
+      ctx.fillStyle = r[2];
+      for (var x = -off; x < WIDTH; x += r[3]) ctx.fillRect(Math.round(x), r[0], r[4], 1);
+    }
+
+    // shimmering sunset glint under the sky's glow (~x132)
+    ctx.fillStyle = "rgba(255,200,140,0.22)";
+    for (var y = top + 2; y < HEIGHT; y += 3) {
+      var w = 9 + (y % 6);
+      var gx = 132 + Math.sin(y * 1.3 + scroll * 0.05) * 7;
+      ctx.fillRect(Math.round(gx - w / 2), y, w, 1);
+    }
+  }
+
+  // ---- Bridge piers standing in the river (drawn over the water) -------
+  function piers(ctx, scroll) {
+    var sp = 78, off = (scroll % sp), top = GROUND_Y + 11;
+    for (var x = -off; x < WIDTH + 10; x += sp) {
+      var px = Math.round(x);
+      ctx.fillStyle = "#33240f";
+      ctx.fillRect(px - 2, top, 5, HEIGHT - top);
+      ctx.fillStyle = "#5a4020";
+      ctx.fillRect(px - 2, top, 1, HEIGHT - top);          // lit edge
+      ctx.fillStyle = "#2a1d0d";
+      ctx.fillRect(px - 4, WATER_Y + 3, 9, 2);             // cross-brace
+      ctx.fillStyle = "rgba(20,30,55,0.5)";
+      ctx.fillRect(px - 2, WATER_Y + 8, 5, HEIGHT - (WATER_Y + 8)); // submerged, darker
     }
   }
 
@@ -304,8 +350,10 @@ KR.bg = (function () {
     palace(ctx, scroll);
     ridge(ctx, scroll, 0.30, 132, 24, 34, "#271e3c", 53);  // near range
     scatter(ctx, scroll, 0.5, 58, 146, 401, MID_TYPES, 0.32);  // trees, temples, banners
-    ground(ctx, scroll);
-    scatter(ctx, scroll, 1.0, 82, GROUND_Y, 733, FORE_TYPES, 0.42); // fences & lanterns
+    bridge(ctx, scroll);                                       // wooden deck
+    scatter(ctx, scroll, 1.0, 82, GROUND_Y, 733, FORE_TYPES, 0.42); // lanterns/rails on it
+    water(ctx, scroll);                                        // river (closest, fastest)
+    piers(ctx, scroll);                                        // posts standing in the river
   }
 
   // ---- Torii gate (level marker the runner passes through) -------------
