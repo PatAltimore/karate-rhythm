@@ -11,11 +11,11 @@
   "routes": [
     {
       "route": "/js/*",
-      "headers": { "cache-control": "public, max-age=86400" }
+      "headers": { "cache-control": "no-cache" }
     },
     {
       "route": "/css/*",
-      "headers": { "cache-control": "public, max-age=86400" }
+      "headers": { "cache-control": "no-cache" }
     }
   ]
 }

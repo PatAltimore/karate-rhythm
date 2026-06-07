@@ -44,6 +44,9 @@
   var LEAP_LEAD_BEATS = 0.45;      // foe launches its kick this far before arrival
   var LEAP_FOLLOW_BEATS = 0.45;    // ...and comes down this far after (apex = arrival)
 
+  var HAWK_FLY_Y = 104;            // fixed height the hawk scrolls in at
+  var HAWK_DIVE = 22;              // how far it swoops down to strike on its beat
+
   // ---- Rhythm charts ---------------------------------------------------
   // Foes arrive on a 16th-note grid (SUB = 4). Each one-bar "groove" is 16
   // slots (slot 0 = downbeat); grooves are composed into 4-bar phrases so the
@@ -122,7 +125,7 @@
   var strength, score, kills, combo, bestCombo;
   var best = 0;
   var scrollX, elapsed, nextSlot, nextGateLevel, displayLevel;
-  var enemies = [], sparks = [], gates = [];
+  var enemies = [], sparks = [], gates = [], feathers = [];
   var player = { runPhase: 0, kicking: false, kickT: 0 };
 
   var shakeT = 0, shakeDur = 0.2, shakeMag = 0;
@@ -150,15 +153,37 @@
     sparks.push({ x: x, y: y, t: 0, color: quality === "perfect" ? "#f6cf6a" : "#e8e6d4" });
   }
 
+  // Burst of drifting, fluttering feathers when a hawk is felled.
+  function spawnFeathers(x, y) {
+    var cols = ["#ece4cc", "#c2a878", "#8a6a44", "#5a3e22"];
+    for (var i = 0; i < 14; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var sp = 18 + Math.random() * 52;
+      feathers.push({
+        x: x, y: y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 36,            // bias the burst upward
+        rot: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 9,
+        life: 0, maxLife: 0.9 + Math.random() * 0.7,
+        flutter: Math.random() * Math.PI * 2,
+        col: cols[i % cols.length]
+      });
+    }
+  }
+
   // ---- Spawning & resolution ------------------------------------------
-  function spawnEnemy(arrivalBeat, travelBeats) {
-    var kit = S.ENEMY_KITS[Math.floor(arrivalBeat * 2) % S.ENEMY_KITS.length];
+  function spawnEnemy(arrivalBeat, travelBeats, kind) {
+    var isHawk = kind === "hawk";
+    var kit = isHawk ? null : S.ENEMY_KITS[Math.floor(arrivalBeat * 2) % S.ENEMY_KITS.length];
     enemies.push({
+      kind: isHawk ? "hawk" : "foe",
       arrivalTime: audio.getBeatTime(arrivalBeat),
       spawnTime: audio.getBeatTime(arrivalBeat - travelBeats),
-      x: ENEMY_SPAWN_X, y: GROUND_Y, yOff: 0,
+      x: ENEMY_SPAWN_X, baseY: isHawk ? HAWK_FLY_Y : GROUND_Y,
+      y: isHawk ? HAWK_FLY_Y : GROUND_Y, yOff: 0, bob: 0,
       state: "run", resolved: false, passed: false, leaping: false,
-      runPhase: Math.random(), kit: kit,
+      runPhase: Math.random(), flapPhase: Math.random() * 2, kit: kit,
       vx: 0, vy: 0, rot: 0, spin: 0, deadT: 0
     });
   }
@@ -169,12 +194,6 @@
 
   function killEnemy(e, quality) {
     e.resolved = true;
-    e.state = "dead";
-    e.deadT = 0;
-    e.y = GROUND_Y + (e.yOff || 0);   // knock back from wherever it was mid-leap
-    e.vx = 80 + Math.random() * 60;
-    e.vy = -150 - Math.random() * 50;
-    e.spin = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 4);
 
     kills++;
     combo++;
@@ -184,11 +203,27 @@
     score += Math.round(base * mult);
     strength = Math.min(100, strength + HIT_HEAL);
 
-    addSpark(76, GROUND_Y - 16, quality);
     flashT = 0.12;
     popup(quality === "perfect" ? "PERFECT" : "GOOD", quality, e.x, GROUND_Y - 30);
     if (combo > 1 && combo % 5 === 0) popup(combo + " COMBO!", "good", PLAYER_X + 18, GROUND_Y - 48);
-    audio.playHit(quality);
+
+    if (e.kind === "hawk") {
+      // burst into feathers and crash the cymbal; remove at once (no tumble)
+      spawnFeathers(e.x, e.baseY + (e.bob || 0) + (e.yOff || 0));
+      addSpark(e.x, e.baseY + (e.yOff || 0), quality);
+      audio.playCymbal();
+      var ix = enemies.indexOf(e);
+      if (ix >= 0) enemies.splice(ix, 1);
+    } else {
+      e.state = "dead";
+      e.deadT = 0;
+      e.y = GROUND_Y + (e.yOff || 0);   // knock back from wherever it was mid-leap
+      e.vx = 80 + Math.random() * 60;
+      e.vy = -150 - Math.random() * 50;
+      e.spin = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 4);
+      addSpark(76, GROUND_Y - 16, quality);
+      audio.playHit(quality);
+    }
   }
 
   function whiff() {
@@ -262,7 +297,12 @@
         if (cfg) {
           var rel = nextSlot - boundaryBeat(lvl) * SUB;
           var idx = ((rel % PHRASE_SLOTS) + PHRASE_SLOTS) % PHRASE_SLOTS;
-          if (cfg.chart[idx] === 1) spawnEnemy(arrivalBeat, travel);
+          if (cfg.chart[idx] === 1) {
+            // From level 2 on, the strong downbeats (where a cymbal belongs)
+            // arrive as a diving hawk instead of a ground foe.
+            var hawk = lvl >= 2 && (idx === 0 || idx === BAR_SLOTS * 2);
+            spawnEnemy(arrivalBeat, travel, hawk ? "hawk" : "foe");
+          }
         }
         nextSlot++;
         if (++guard > 512) break;
@@ -282,17 +322,23 @@
         if (e.state === "run") {
           var p = (now - e.spawnTime) / (e.arrivalTime - e.spawnTime);
           e.x = lerp(ENEMY_SPAWN_X, ENEMY_CONTACT_X, p);
-          e.runPhase += dt * 6;
-          // Reaching striking range, the foe leaps into a jump-kick that peaks
-          // on its arrival beat — so it meets the hero's kick in mid-air.
-          var bRel = (now - e.arrivalTime) / audio.beatDuration; // beats from arrival
-          if (bRel > -LEAP_LEAD_BEATS && bRel < LEAP_FOLLOW_BEATS) {
-            e.leaping = true;
-            var lp = (bRel + LEAP_LEAD_BEATS) / (LEAP_LEAD_BEATS + LEAP_FOLLOW_BEATS);
-            e.yOff = -Math.sin(clamp(lp, 0, 1) * Math.PI) * FOE_JUMP_HEIGHT;
+
+          // Around its arrival beat the enemy attacks: a foe leaps up into a
+          // jump-kick, a hawk folds into a downward dive. Both peak on the beat,
+          // meeting the hero's kick.
+          var bRel = (now - e.arrivalTime) / audio.beatDuration;
+          var inWin = bRel > -LEAP_LEAD_BEATS && bRel < LEAP_FOLLOW_BEATS;
+          var arc = inWin
+            ? Math.sin(clamp((bRel + LEAP_LEAD_BEATS) / (LEAP_LEAD_BEATS + LEAP_FOLLOW_BEATS), 0, 1) * Math.PI)
+            : 0;
+          e.leaping = inWin;
+          if (e.kind === "hawk") {
+            e.flapPhase += dt * 9;
+            e.bob = Math.sin(now * 6) * 1.5;
+            e.yOff = arc * HAWK_DIVE;            // swoop down
           } else {
-            e.leaping = false;
-            e.yOff = 0;
+            e.runPhase += dt * 6;
+            e.yOff = -arc * FOE_JUMP_HEIGHT;     // leap up
           }
           if (!e.resolved && now > e.arrivalTime + HIT_GOOD) registerPass(e);
           if (e.x < -30) enemies.splice(i, 1);
@@ -324,6 +370,16 @@
       sparks[s].t += dt / 0.35;
       if (sparks[s].t >= 1) sparks.splice(s, 1);
     }
+    for (var fi = feathers.length - 1; fi >= 0; fi--) {
+      var f = feathers[fi];
+      f.life += dt;
+      if (f.life >= f.maxLife) { feathers.splice(fi, 1); continue; }
+      f.vy += 40 * dt;                 // light gravity
+      f.vx *= 0.985;                   // air drag
+      f.x += (f.vx + Math.sin(f.life * 8 + f.flutter) * 14) * dt; // flutter sideways
+      f.y += f.vy * dt;
+      f.rot += f.spin * dt;
+    }
     if (shakeT > 0) shakeT -= dt;
     if (flashT > 0) flashT -= dt;
     if (flashDanger > 0) flashDanger -= dt;
@@ -331,6 +387,13 @@
 
   // ---- Render ---------------------------------------------------------
   function drawFoe(e) {
+    if (e.kind === "hawk") {
+      S.shadow(ctx, e.x, GROUND_Y, 12, 0.12);   // faint shadow on the bridge below
+      S.hawk(ctx, e.x, e.baseY + (e.bob || 0) + (e.yOff || 0), {
+        frame: Math.floor(e.flapPhase), pose: e.leaping ? "dive" : "fly"
+      });
+      return;
+    }
     var dead = e.state === "dead";
     var off = e.yOff || 0;
     if (!dead) S.shadow(ctx, e.x, GROUND_Y, 16, 0.28 * (1 + off / FOE_JUMP_HEIGHT * 0.6));
@@ -339,6 +402,18 @@
       pose: dead ? "hit" : (e.leaping ? "kick" : "run"),
       phase: e.runPhase, kit: e.kit, rot: e.rot
     });
+  }
+
+  function drawFeather(f) {
+    var a = 1 - f.life / f.maxLife;
+    ctx.save();
+    ctx.globalAlpha = clamp(a * 1.4, 0, 1);
+    ctx.translate(Math.round(f.x), Math.round(f.y));
+    ctx.rotate(f.rot);
+    ctx.fillStyle = f.col;
+    ctx.fillRect(-2, 0, 4, 1);
+    ctx.fillRect(-1, -1, 2, 1);
+    ctx.restore();
   }
 
   function drawPlayer() {
@@ -374,6 +449,8 @@
     for (var i = 0; i < enemies.length; i++) drawFoe(enemies[i]);
     drawPlayer();
     for (var s = 0; s < sparks.length; s++) S.spark(ctx, sparks[s].x, sparks[s].y, sparks[s].t, sparks[s].color);
+    for (var ff = 0; ff < feathers.length; ff++) drawFeather(feathers[ff]);
+    ctx.globalAlpha = 1;
     ctx.restore();
 
     if (flashT > 0) {
@@ -409,7 +486,7 @@
   function resetState() {
     strength = START_STRENGTH;
     score = 0; kills = 0; combo = 0; bestCombo = 0;
-    enemies.length = 0; sparks.length = 0; gates.length = 0;
+    enemies.length = 0; sparks.length = 0; gates.length = 0; feathers.length = 0;
     scrollX = 0; elapsed = 0; nextSlot = 0; nextGateLevel = 2; displayLevel = 1;
     player.kicking = false; player.kickT = 0;
     shakeT = 0; flashT = 0; flashDanger = 0;

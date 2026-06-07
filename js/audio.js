@@ -329,6 +329,33 @@ KR.audio = (function () {
     n.start(t); n.stop(t + 0.2);
   }
 
+  // Felling a hawk crashes a cymbal — bright filtered noise plus a little
+  // metallic shimmer. Hawks land on accent downbeats, so it reads as the kit's
+  // crash cymbal landing in time with the track.
+  function playCymbal() {
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    var n = ctx.createBufferSource(); n.buffer = noiseBuffer;
+    var hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 5000;
+    var bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 9000; bp.Q.value = 0.5;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.5, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    n.connect(hp); hp.connect(bp); bp.connect(g); g.connect(sfxGain);
+    n.start(t); n.stop(t + 0.65);
+
+    var parts = [5200, 7400];
+    for (var i = 0; i < parts.length; i++) {
+      var o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = "square"; o.frequency.value = parts[i];
+      og.gain.setValueAtTime(0.06, t);
+      og.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      o.connect(og); og.connect(sfxGain);
+      o.start(t); o.stop(t + 0.42);
+    }
+  }
+
   function playMiss() {
     if (!ctx) return;
     var t = ctx.currentTime;
@@ -393,6 +420,7 @@ KR.audio = (function () {
     suspend: suspend,
     resume: resume,
     playHit: playHit,
+    playCymbal: playCymbal,
     playMiss: playMiss,
     playGameOver: playGameOver,
     toggleMute: toggleMute,

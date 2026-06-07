@@ -36,6 +36,14 @@ KR.sprites = (function () {
     ctx.fillRect(x, y, w, h);
   }
 
+  function pgon(ctx, pts, c) {
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.moveTo(pts[0], pts[1]);
+    for (var i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+    ctx.closePath(); ctx.fill();
+  }
+
   // ---- Poses (all face +x; feet at origin) -----------------------------
   function drawRun(ctx, k, phase) {
     var frameB = phase % 1 >= 0.5;
@@ -170,10 +178,59 @@ KR.sprites = (function () {
     ctx.restore();
   }
 
+  // ---- Hawk (flies in left; broad-winged soar that folds into a dive) --
+  // cx, cy = body centre. opts: { frame, pose:'fly'|'dive' }. Always faces left.
+  // Compact body + a wide (~26px) bent wingspan to read as a raptor, not a duck.
+  function hawk(ctx, cx, cy, opts) {
+    cx = Math.round(cx); cy = Math.round(cy);
+    var body = "#6a4a2c", dark = "#3a2614", wing = "#5a3e22", wingD = "#2e2012",
+        belly = "#9a7a4c", beak = "#e0a030", eye = "#15131a", talon = "#241a0e";
+
+    function head(hy, by) {
+      r(ctx, cx - 7, by - 2, 4, 3, body);     // head
+      r(ctx, cx - 9, hy, 2, 2, beak);         // hooked beak
+      r(ctx, cx - 9, hy + 2, 1, 1, beak);     // hook
+      r(ctx, cx - 5, by - 1, 1, 1, eye);
+    }
+
+    if (opts.pose === "dive") {
+      // stoop: wings swept back, body pitched down, talons thrust forward
+      pgon(ctx, [cx - 1, cy - 2, cx + 6, cy - 5, cx + 12, cy - 5, cx + 5, cy - 1], wingD);
+      r(ctx, cx + 4, cy - 1, 5, 2, dark);                         // swept tail
+      r(ctx, cx - 4, cy - 2, 9, 4, body);                         // body
+      r(ctx, cx - 4, cy, 9, 2, belly);
+      head(cy + 1, cy + 1);
+      pgon(ctx, [cx - 1, cy - 1, cx + 5, cy - 3, cx + 10, cy - 2, cx + 4, cy + 1], wing);
+      r(ctx, cx - 6, cy + 2, 2, 4, talon);                        // talons
+      r(ctx, cx - 3, cy + 2, 2, 4, talon);
+      return;
+    }
+
+    // soaring flap: tips swing from high (up-stroke) to flat spread (down-stroke)
+    var up = ((opts.frame | 0) % 2) === 0;
+    var tipY = up ? cy - 9 : cy + 2;
+    var wristY = up ? cy - 5 : cy - 1;
+
+    // far wing (trailing, behind body)
+    pgon(ctx, [cx + 1, cy - 1, cx + 6, wristY, cx + 13, tipY, cx + 9, cy + 1], wingD);
+    r(ctx, cx + 12, tipY, 2, 1, wingD);                           // splayed tip
+    // tail (fanned)
+    r(ctx, cx + 4, cy, 5, 3, dark);
+    r(ctx, cx + 8, cy + 1, 2, 1, dark);
+    // body + head
+    r(ctx, cx - 4, cy - 2, 9, 4, body);
+    r(ctx, cx - 4, cy, 9, 2, belly);
+    head(cy - 1, cy);
+    // near wing (leading, in front) — broad, lighter
+    pgon(ctx, [cx - 1, cy - 1, cx - 6, wristY, cx - 13, tipY, cx - 9, cy + 1], wing);
+    r(ctx, cx - 13, tipY, 2, 1, wing);                            // splayed tip
+  }
+
   return {
     PAL: PAL,
     ENEMY_KITS: ENEMY_KITS,
     fighter: fighter,
+    hawk: hawk,
     shadow: shadow,
     spark: spark
   };
