@@ -520,7 +520,10 @@
   }
 
   // ---- Fade-to-black transitions ---------------------------------------
-  function fadeThen(mid) { transition = { phase: "out", t: 0, mid: mid }; }
+  function fadeThen(mid) {
+    shakeT = 0; flashT = 0; flashDanger = 0;   // clear lingering screen effects
+    transition = { phase: "out", t: 0, mid: mid };
+  }
   function transitionAlpha() {
     if (!transition) return 0;
     return transition.phase === "out"
@@ -731,7 +734,7 @@
 
   function render() {
     var ox = 0, oy = 0;
-    if (shakeT > 0) {
+    if (shakeT > 0 && (state === "playing" || state === "boss")) {
       var m = shakeMag * (shakeT / shakeDur);
       ox = (Math.random() * 2 - 1) * m;
       oy = (Math.random() * 2 - 1) * m;

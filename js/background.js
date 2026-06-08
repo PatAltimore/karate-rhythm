@@ -529,9 +529,10 @@ KR.bg = (function () {
       cutCastle(ctx, 214, 118, 2.3);
       ridge(ctx, sc2, 0.4, 134, 18, 34, "#1f1426", 40);
       bridge(ctx, sc2); water(ctx, sc2); piers(ctx, sc2);
-      SP.fighter(ctx, 56, gy, { facing: 1, pose: "run", phase: t * 1.6 });
-      SP.fighter(ctx, 150, bob(1), { facing: -1, pose: "idle", kit: EK[0] });
-      SP.fighter(ctx, 182, bob(2), { facing: -1, pose: "idle", kit: EK[1], rank: 1 });
+      SP.fighter(ctx, 56, gy, { facing: 1, pose: "run", phase: t * 1.6 }); // hero walks in place
+      // guards belong to the world, so they scroll left with the bridge
+      SP.fighter(ctx, 198 - sc2, bob(1), { facing: -1, pose: "idle", kit: EK[0] });
+      SP.fighter(ctx, 234 - sc2, bob(2), { facing: -1, pose: "idle", kit: EK[1], rank: 1 });
     } else if (scene === "gates") {
       cutSky(ctx, "night");
       cutMoon(ctx, 210, 44, 13);
