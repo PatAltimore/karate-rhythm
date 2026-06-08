@@ -445,8 +445,121 @@ KR.bg = (function () {
     bossTorch(ctx, 40, 100, fl); bossTorch(ctx, WIDTH - 40, 100, fl);
   }
 
+  // ---- Cut-scene art (static cinematic panels) -------------------------
+  function cutSky(ctx, mode) {
+    var g = ctx.createLinearGradient(0, 0, 0, HEIGHT), s = g.addColorStop.bind(g);
+    if (mode === "night")      { s(0, "#0e0a1e"); s(0.65, "#1a1230"); s(1, "#2a1a2e"); }
+    else if (mode === "blood") { s(0, "#2a1430"); s(0.55, "#5a2030"); s(1, "#7a2a26"); }
+    else if (mode === "dawn")  { s(0, "#3a3a6a"); s(0.5, "#d8895a"); s(1, "#f2cc82"); }
+    else                       { s(0, "#352a5e"); s(0.45, "#7a4a74"); s(0.78, "#c4684f"); s(1, "#e6904a"); }
+    ctx.fillStyle = g; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  }
+  function cutMoon(ctx, x, y, r, lit) {
+    var mg = ctx.createRadialGradient(x, y, 2, x, y, r * 2.2);
+    mg.addColorStop(0, lit ? "rgba(245,210,150,0.5)" : "rgba(210,100,80,0.5)");
+    mg.addColorStop(1, "rgba(120,40,40,0)");
+    ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = lit ? "#f0d480" : "#cf7458";
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  function cutFloor(ctx, top, c1, c2) {
+    var g = ctx.createLinearGradient(0, top, 0, HEIGHT);
+    g.addColorStop(0, c1); g.addColorStop(1, c2);
+    ctx.fillStyle = g; ctx.fillRect(0, top, WIDTH, HEIGHT - top);
+  }
+  // Tiered castle keep (tenshu) silhouette.
+  function cutCastle(ctx, cx, baseY, scale) {
+    var c = "#15101f", roof = "#0c0814", lit = "#e8b060";
+    var tiers = 4, bw = 18 * scale, th = 11 * scale;
+    for (var i = 0; i < tiers; i++) {
+      var w = Math.round(bw * (1 - i * 0.16)), hw = w >> 1;
+      var y = Math.round(baseY - (i + 1) * th);
+      ctx.fillStyle = roof;
+      ctx.fillRect(cx - hw - 3, y - 1, w + 6, 2);
+      ctx.fillRect(cx - hw - 4, y, 2, 1); ctx.fillRect(cx + hw + 2, y, 2, 1);
+      ctx.fillStyle = c; ctx.fillRect(cx - hw, y, w, Math.round(th));
+      ctx.fillStyle = lit;
+      ctx.fillRect(cx - 2, y + Math.round(th * 0.4), 2, 2);
+      ctx.fillRect(cx + 1, y + Math.round(th * 0.4), 2, 2);
+    }
+    ctx.fillStyle = "#d8b048"; ctx.fillRect(cx - 1, Math.round(baseY - tiers * th - 4), 2, 5);
+  }
+  function grandGate(ctx, cx, gy) {
+    var V = "#7a2418", VD = "#4a1208", K = "#180a06";
+    ctx.fillStyle = V; ctx.fillRect(cx - 40, 70, 9, gy - 70); ctx.fillRect(cx + 31, 70, 9, gy - 70);
+    ctx.fillStyle = VD; ctx.fillRect(cx - 40, 70, 3, gy - 70); ctx.fillRect(cx + 31, 70, 3, gy - 70);
+    ctx.fillStyle = K; ctx.fillRect(cx - 52, 62, 104, 6);            // lintel
+    ctx.fillStyle = "#0c0a10"; ctx.fillRect(cx - 56, 56, 112, 6);    // roof
+    ctx.fillStyle = "#1a1018"; ctx.fillRect(cx - 31, 84, 62, gy - 84); // dark opening
+  }
+  var KIT_PRINCESS = { gi: "#c86a86", giSh: "#9a4a64", band: "#e0c050", hair: "#241018" };
+
+  function cutEmbers(ctx, t) {
+    ctx.fillStyle = "rgba(232,150,80,0.55)";
+    for (var i = 0; i < 9; i++) {
+      var x = (i * 37 + Math.sin(t * 0.7 + i) * 9 + WIDTH) % WIDTH;
+      var y = GROUND_Y - 8 - ((t * 9 + i * 23) % 74);
+      ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+    }
+  }
+
+  // Animated cinematic panel. t = seconds the panel has been on screen.
+  function cut(ctx, scene, t) {
+    var SP = KR.sprites, gy = GROUND_Y, EK = SP.ENEMY_KITS;
+    function bob(seed) { return gy - (0.5 + 0.5 * Math.sin(t * 2.4 + seed)); } // subtle breathing
+    if (scene === "castle") {
+      cutSky(ctx, "night");
+      cutMoon(ctx, 196, 50, 16 + Math.sin(t * 0.9) * 1.3);     // pulsing blood moon
+      ridge(ctx, 0, 0, 118, 26, 42, "#241a38", 3);
+      cutCastle(ctx, 120, 150, 4.4);
+      cutFloor(ctx, gy, "#191222", "#0c0810");
+      cutEmbers(ctx, t);
+    } else if (scene === "setout") {
+      var sc = t * 16;                                          // slow travel
+      cutSky(ctx, "dusk");
+      ridge(ctx, sc, 0.18, 110, 22, 52, "#3b2a55", 0);
+      cutCastle(ctx, 234, 134, 1.7);
+      ridge(ctx, sc, 0.5, 132, 20, 34, "#271e3c", 40);
+      cutFloor(ctx, gy, "#2a1c12", "#120c08");
+      SP.fighter(ctx, 60, gy, { facing: 1, pose: "run", phase: t * 1.6 }); // walking
+    } else if (scene === "river") {
+      var sc2 = t * 18;
+      cutSky(ctx, "blood");
+      ridge(ctx, sc2, 0.18, 116, 26, 46, "#3a1e3a", 9);
+      cutCastle(ctx, 214, 118, 2.3);
+      ridge(ctx, sc2, 0.4, 134, 18, 34, "#1f1426", 40);
+      bridge(ctx, sc2); water(ctx, sc2); piers(ctx, sc2);
+      SP.fighter(ctx, 56, gy, { facing: 1, pose: "run", phase: t * 1.6 });
+      SP.fighter(ctx, 150, bob(1), { facing: -1, pose: "idle", kit: EK[0] });
+      SP.fighter(ctx, 182, bob(2), { facing: -1, pose: "idle", kit: EK[1], rank: 1 });
+    } else if (scene === "gates") {
+      cutSky(ctx, "night");
+      cutMoon(ctx, 210, 44, 13);
+      cutCastle(ctx, 140, 118, 3.2);
+      cutFloor(ctx, gy, "#191222", "#0c0810");
+      grandGate(ctx, 140, gy);
+      SP.fighter(ctx, 52, bob(0), { facing: 1, pose: "idle" });
+      SP.fighter(ctx, 108, bob(1), { facing: -1, pose: "idle", kit: EK[2], rank: 2 });
+      SP.fighter(ctx, 172, bob(3), { facing: -1, pose: "idle", kit: EK[1], rank: 2 });
+    } else if (scene === "throne") {
+      drawBoss(ctx, t * 2.2);                                   // torches flicker
+      SP.boss(ctx, 150, gy, { facing: -1, pose: "idle" });
+      var hx = -12 + Math.min(1, t / 2.2) * 72;                // hero strides in
+      SP.fighter(ctx, hx, gy, { facing: 1, pose: t < 2.2 ? "run" : "idle", phase: t * 1.6 });
+    } else if (scene === "dawn") {
+      cutSky(ctx, "dawn");
+      cutMoon(ctx, 150, 150 - Math.min(1, t / 2.6) * 92, 18, true); // sun rises
+      ridge(ctx, 0, 0, 112, 22, 52, "#9a7a86", 0);
+      cutCastle(ctx, 150, 132, 2.6);
+      ridge(ctx, 0, 0, 134, 18, 34, "#6a5a6a", 40);
+      cutFloor(ctx, gy, "#7a5a44", "#4a3424");
+      SP.fighter(ctx, 96, bob(0), { facing: 1, pose: "idle" });
+      SP.fighter(ctx, 126, bob(2), { facing: -1, pose: "idle", kit: KIT_PRINCESS });
+    }
+  }
+
   return {
-    draw: draw, torii: torii, drawBoss: drawBoss,
+    draw: draw, torii: torii, drawBoss: drawBoss, cut: cut,
     WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_Y: GROUND_Y
   };
 })();

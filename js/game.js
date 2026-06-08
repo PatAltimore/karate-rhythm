@@ -58,6 +58,19 @@
   var BOSS_WHIFF_COST = 5;         // strength lost on a mistimed tap
   var DUEL_LEAD_BEATS = 4;         // beats of breathing room before the duel begins
 
+  // ---- Story cut-scenes (between acts) ---------------------------------
+  var CUTSCENES = {
+    intro: [
+      { scene: "castle", text: "The Shogun has seized the mountain castle — and taken the princess." },
+      { scene: "setout", text: "At dusk you set out alone. Only rhythm and resolve will carry you." }
+    ],
+    act2:    [{ scene: "river",  text: "Beyond the river his guards close ranks, and the sky bleeds to dusk." }],
+    act3:    [{ scene: "gates",  text: "The castle gates loom. Helmed elites bar the final road." }],
+    boss:    [{ scene: "throne", text: "Within the throne room, the Shogun rises. One duel remains." }],
+    victory: [{ scene: "dawn",   text: "The Shogun falls. Dawn breaks over the freed castle." }]
+  };
+  var CUT_PANEL_DUR = 5.5;         // seconds each panel auto-holds (tap to advance)
+
   // ---- Rhythm charts ---------------------------------------------------
   // Foes arrive on a 16th-note grid (SUB = 4). Each one-bar "groove" is 16
   // slots (slot 0 = downbeat); grooves are composed into 4-bar phrases so the
@@ -123,6 +136,7 @@
   // Three acts (I: 1-3, II: 4-6, III: 7-10), then the boss is "act 4".
   function actForLevel(lvl) { return lvl <= 3 ? 1 : lvl <= 6 ? 2 : 3; }
   function actBaseLevel(act) { return act === 1 ? 1 : act === 2 ? 4 : 7; }
+  function actEndLevel(act) { return act === 1 ? 3 : act === 2 ? 6 : 10; }
   function actName(a) { return a === 1 ? "ACT I" : a === 2 ? "ACT II" : a === 3 ? "ACT III" : "FINAL"; }
   function enemyRank(lvl) { return lvl <= 3 ? 0 : lvl <= 6 ? 1 : 2; }
   // levelOffset shifts a checkpoint's first raw level up to its act base.
@@ -133,7 +147,7 @@
 
   // ---- State ----------------------------------------------------------
   var canvas, ctx, hud, popupLayer, scoreEl, comboEl, fillEl, beatDot, levelEl, muteBtn;
-  var actEl, bossHud, bossFill, titleEl, gameoverEl, victoryEl;
+  var actEl, bossHud, bossFill, titleEl, gameoverEl, victoryEl, cutsceneEl, cutsceneTextEl;
 
   var state = "title";            // title | playing | boss | victory | over
   var paused = false;
@@ -144,6 +158,7 @@
   var scrollX, elapsed, nextSlot, nextGateLevel, displayLevel;
   var levelOffset = 0, checkpointAct = 1, displayAct = 1;
   var boss = null, heroDuel = null;
+  var cutscene = null, cutsceneAct = 1, runAct = 1;
   var enemies = [], sparks = [], gates = [], feathers = [];
   var player = { runPhase: 0, kicking: false, kickT: 0 };
 
@@ -300,19 +315,23 @@
   }
 
   function enterBoss() {
-    if (state === "boss") return;
     state = "boss";
-    checkpointAct = 4;
+    checkpointAct = 4; cutsceneAct = 4;
     enemies.length = 0; gates.length = 0; feathers.length = 0; combo = 0;
+    strength = START_STRENGTH;
+    hideOverlays();
+    hud.style.visibility = "visible";
+    if (audio.setBossMode) audio.setBossMode(true);
+    audio.start();                         // boss music on a fresh timeline
     boss = {
       hp: BOSS_HP, pose: "idle", poseT: 0, bob: 0, hitFlash: 0,
       startBeat: Math.ceil(audio.getCurrentBeat()) + DUEL_LEAD_BEATS,
       checkBeat: 0, resolved: {}, defeated: false, defeatT: 0
     };
     heroDuel = { pose: "idle", poseT: 0 };
-    if (audio.setBossMode) audio.setBossMode(true);
     popup("THE SHOGUN", "level", W / 2, 38);
     flashT = 0.2;
+    lastTime = performance.now();
   }
 
   function bossUpdate(dt) {
@@ -446,22 +465,68 @@
   }
 
   function victory() {
-    if (state === "victory") return;
-    state = "victory";
+    if (state === "victory" || state === "cutscene") return;
     audio.stop();
     if (audio.playVictory) audio.playVictory();
     best = Math.max(best, score);
     try { localStorage.setItem("kr_best", String(best)); } catch (e) {}
+    pauseForCutscene("victory", showVictoryOverlay);
+  }
+
+  function showVictoryOverlay() {
+    state = "victory";
+    audio.stop();
     var vScore = document.getElementById("vict-score");
     var vBest = document.getElementById("vict-best");
     if (vScore) vScore.textContent = score;
     if (vBest) vBest.textContent = best;
-    var vs = document.getElementById("victory");
-    if (vs) vs.classList.remove("hidden");
+    if (victoryEl) victoryEl.classList.remove("hidden");
+  }
+
+  // ---- Cut-scenes ------------------------------------------------------
+  function hideOverlays() {
+    titleEl.classList.add("hidden");
+    gameoverEl.classList.add("hidden");
+    if (victoryEl) victoryEl.classList.add("hidden");
+    if (cutsceneEl) cutsceneEl.classList.add("hidden");
+  }
+
+  function pauseForCutscene(key, onDone) {
+    var panels = CUTSCENES[key];
+    if (!panels) { onDone(); return; }
+    audio.stop();                          // end whatever was playing
+    if (audio.startCutscene) audio.startCutscene();  // slow atmospheric score
+    state = "cutscene";
+    hud.style.visibility = "hidden";
+    cutscene = { panels: panels, index: 0, t: 0, onDone: onDone };
+    showCutPanel();
+  }
+  function showCutPanel() {
+    if (cutsceneTextEl) cutsceneTextEl.textContent = cutscene.panels[cutscene.index].text;
+    if (cutsceneEl) cutsceneEl.classList.remove("hidden");
+  }
+  function cutsceneAdvance() {
+    if (!cutscene) return;
+    if (++cutscene.index >= cutscene.panels.length) cutsceneFinish();
+    else { cutscene.t = 0; showCutPanel(); }
+  }
+  function cutsceneFinish() {
+    if (!cutscene) return;
+    var done = cutscene.onDone;
+    cutscene = null;
+    if (cutsceneEl) cutsceneEl.classList.add("hidden");
+    done();
   }
 
   // ---- Update ---------------------------------------------------------
   function update(dt) {
+    if (state === "cutscene") {
+      if (cutscene) {
+        cutscene.t += dt;
+        if (cutscene.t >= CUT_PANEL_DUR) cutsceneAdvance();
+      }
+      return;   // everything else is frozen during a cut-scene
+    }
     var playing = state === "playing";
     var curBeat = (audio.ready && (playing || state === "boss")) ? audio.getCurrentBeat() : 0;
     var scrollMul = playing ? levelConfig(effLevel(curBeat)).scrollMul : 1;
@@ -481,13 +546,19 @@
       elapsed += dt;
       var now = audio.currentTime;
 
-      // Past level 10 -> hand off to the static boss duel.
-      if (effLevel(curBeat) > TOTAL_LEVELS) enterBoss();
-
+      // End of the current act -> a story cut-scene, then the next act (the
+      // boss after act III). Each act is its own runner segment.
       var el = effLevel(curBeat);
       displayAct = actForLevel(Math.min(el, TOTAL_LEVELS));
-      if (el >= 4 && checkpointAct < 2) checkpointAct = 2;
-      if (el >= 7 && checkpointAct < 3) checkpointAct = 3;
+      if (el > actEndLevel(runAct)) {
+        if (runAct >= 3) {
+          pauseForCutscene("boss", enterBoss);
+        } else {
+          var nxt = runAct + 1;
+          pauseForCutscene("act" + nxt, function () { startAct(nxt); });
+        }
+        return;
+      }
 
       // Spawn foes whose march-in time has arrived (16th-note slots). The phrase
       // is selected by effective level; foes gain helmets/armour by act rank.
@@ -496,7 +567,7 @@
         var arrivalBeat = nextSlot / SUB;
         var rl = levelForBeat(arrivalBeat);
         var al = rl + levelOffset;
-        var cfg = (arrivalBeat < INTRO_BEATS || al > TOTAL_LEVELS) ? null : levelConfig(al);
+        var cfg = (arrivalBeat < INTRO_BEATS || al > actEndLevel(runAct)) ? null : levelConfig(al);
         var travel = cfg ? cfg.travelBeats : 4.0;
         if (now < audio.getBeatTime(arrivalBeat - travel)) break;
         if (cfg) {
@@ -564,13 +635,7 @@
       if (!g.triggered && g.screenX <= PLAYER_X) {
         g.triggered = true;
         displayLevel = g.level;
-        var ga = actForLevel(g.level);
-        if (g.level === actBaseLevel(ga) && ga > 1) {
-          displayAct = ga;
-          popup(actName(ga), "level", W / 2, 40);
-        } else {
-          popup("LEVEL " + g.level, "level", W / 2, 44);
-        }
+        popup("LEVEL " + g.level, "level", W / 2, 44);
         flashT = Math.max(flashT, 0.14);
       }
       if (g.screenX < -60) gates.splice(gi, 1);
@@ -650,7 +715,9 @@
     ctx.save();
     ctx.translate(Math.round(ox), Math.round(oy));
 
-    if (state === "boss" || state === "victory") {
+    if (state === "cutscene") {
+      if (cutscene) BG.cut(ctx, cutscene.panels[cutscene.index].scene, cutscene.t);
+    } else if (state === "boss" || state === "victory") {
       bossRender();
     } else {
       BG.draw(ctx, scrollX);
@@ -711,33 +778,39 @@
     score = 0; kills = 0; combo = 0; bestCombo = 0;
     enemies.length = 0; sparks.length = 0; gates.length = 0; feathers.length = 0;
     scrollX = 0; elapsed = 0; nextSlot = 0; nextGateLevel = 2; displayLevel = 1;
-    boss = null; heroDuel = null;
+    boss = null; heroDuel = null; cutscene = null;
     player.kicking = false; player.kickT = 0;
     shakeT = 0; flashT = 0; flashDanger = 0;
   }
 
-  // act: 1-3 start that act of the runner; 4 retries the boss directly.
-  function startGame(act) {
-    act = act || 1;
-    resetState();
-    titleEl.classList.add("hidden");
-    gameoverEl.classList.add("hidden");
-    if (victoryEl) victoryEl.classList.add("hidden");
+  // Fresh run from the title: unlock audio, then the intro cut-scene -> act 1.
+  function newGame() {
+    resetState();                          // full reset (score 0)
+    runAct = 1; checkpointAct = 1; cutsceneAct = 1; displayAct = 1;
+    hideOverlays();
+    audio.init(); audio.resume();          // unlock audio during this gesture
+    pauseForCutscene("intro", function () { startAct(1); });
+  }
+
+  // Begin (or retry) an act of the runner; act 4 hands off to the boss.
+  // Score persists across acts; only newGame() zeroes it.
+  function startAct(act) {
+    if (act === 4) { enterBoss(); return; }
+    strength = START_STRENGTH; combo = 0;
+    enemies.length = 0; sparks.length = 0; gates.length = 0; feathers.length = 0;
+    boss = null; heroDuel = null;
+    scrollX = 0; elapsed = 0; nextSlot = 0; nextGateLevel = 2;
+    player.kicking = false; player.kickT = 0;
+    shakeT = 0; flashT = 0; flashDanger = 0;
+    levelOffset = actBaseLevel(act) - 1;
+    runAct = act; checkpointAct = act; cutsceneAct = act;
+    displayAct = act; displayLevel = actBaseLevel(act);
+    hideOverlays();
     hud.style.visibility = "visible";
+    if (audio.setBossMode) audio.setBossMode(false);
+    audio.start();                         // this act's runner music
     lastTime = performance.now();
-
-    audio.start();
-    if (audio.setBossMode) audio.setBossMode(act === 4);
-
-    if (act === 4) {
-      enterBoss();
-    } else {
-      levelOffset = actBaseLevel(act) - 1;
-      checkpointAct = act;
-      displayAct = act;
-      displayLevel = actBaseLevel(act);
-      state = "playing";
-    }
+    state = "playing";
   }
 
   function gameOver() {
@@ -783,8 +856,9 @@
   function tapAction() {
     if (state === "playing") attack();
     else if (state === "boss") bossAttack();
-    else if (state === "over") startGame(checkpointAct);
-    else startGame(1);                 // title / victory -> fresh run
+    else if (state === "cutscene") return;     // cut-scenes auto-advance; use SKIP
+    else if (state === "over") startAct(checkpointAct);
+    else newGame();                    // title / victory -> fresh run with intro
   }
 
   function bindInput() {
@@ -792,7 +866,7 @@
     stage.addEventListener("pointerdown", function (e) {
       if (e.target.closest && e.target.closest("#mute-btn")) return;
       if (e.target.closest && e.target.closest(".btn")) return; // let buttons handle their click
-      if (state === "playing" || state === "boss") { e.preventDefault(); tapAction(); }
+      if (state === "playing" || state === "boss" || state === "cutscene") { e.preventDefault(); tapAction(); }
     });
 
     window.addEventListener("keydown", function (e) {
@@ -804,10 +878,12 @@
       }
     });
 
-    document.getElementById("start-btn").addEventListener("click", function () { startGame(1); });
-    document.getElementById("restart-btn").addEventListener("click", function () { startGame(checkpointAct); });
+    document.getElementById("start-btn").addEventListener("click", newGame);
+    document.getElementById("restart-btn").addEventListener("click", function () { startAct(checkpointAct); });
     var vb = document.getElementById("victory-btn");
-    if (vb) vb.addEventListener("click", function () { startGame(1); });
+    if (vb) vb.addEventListener("click", newGame);
+    var cs = document.getElementById("cutscene-skip");
+    if (cs) cs.addEventListener("click", function (e) { e.stopPropagation(); cutsceneFinish(); });
     muteBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       toggleMute();
@@ -862,6 +938,8 @@
     titleEl = document.getElementById("title");
     gameoverEl = document.getElementById("gameover");
     victoryEl = document.getElementById("victory");
+    cutsceneEl = document.getElementById("cutscene");
+    cutsceneTextEl = document.getElementById("cutscene-text");
 
     try { best = parseInt(localStorage.getItem("kr_best") || "0", 10) || 0; } catch (e) { best = 0; }
 

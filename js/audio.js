@@ -41,6 +41,7 @@ KR.audio = (function () {
   var running = false;
   var muted = false;
   var bossMode = false;
+  var cutsceneMode = false;
 
   // Injected by the game: beat -> section index (0-based). Defaults below.
   var sectionResolver = null;
@@ -234,8 +235,61 @@ KR.audio = (function () {
     }
   }
 
+  // ---- Cut-scene music: slow, wistful, atmospheric ---------------------
+  function pad(t3, t, dur) {            // soft sustained chord
+    for (var i = 0; i < 3; i++) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "triangle";
+      o.frequency.value = octShift(pcFreq(reduce(t3[i]), 3), 110, 330);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.085, t + 0.4);
+      g.gain.setValueAtTime(0.085, t + dur * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(musicGain);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+  }
+  function heartbeat(t) {               // soft low pulse
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(82, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.1);
+    g.gain.setValueAtTime(0.34, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    o.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + 0.27);
+  }
+  function bell(freq, t) {              // gentle bell/flute note
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    o.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + 0.95);
+    var o2 = ctx.createOscillator(), g2 = ctx.createGain();
+    o2.type = "sine"; o2.frequency.value = freq * 2;
+    g2.gain.setValueAtTime(0.05, t);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o2.connect(g2); g2.connect(musicGain);
+    o2.start(t); o2.stop(t + 0.52);
+  }
+  function scheduleCutscene(step, t) {
+    var inBar = step % 16;
+    var bar = Math.floor((step % 64) / 16);
+    var roots = [0, 8, 3, 10], quals = ["min", "maj", "maj", "maj"]; // Am F C G
+    var t3 = triad(roots[bar], quals[bar]);
+    if (inBar === 0) pad(t3, t, beatDuration * 3.9);
+    if (inBar === 0 || inBar === 8) heartbeat(t);
+    if (inBar === 4 || inBar === 10 || inBar === 14) {
+      var pick = [t3[2], t3[1], t3[0]][(inBar / 2) % 3];
+      bell(pcFreq(reduce(pick), 5), t);
+    }
+  }
+
   // ---- Sequencer -------------------------------------------------------
   function scheduleStep(step, t) {
+    if (cutsceneMode) { scheduleCutscene(step, t); return; }
     var beat = step / STEPS_PER_BEAT;
     var section = sectionFor(beat);
     var theme = bossMode
@@ -460,9 +514,24 @@ KR.audio = (function () {
 
   // ---- Transport -------------------------------------------------------
   function start() {
+    cutsceneMode = false;
     init();
     if (ctx.state === "suspended") ctx.resume();
     startTime = ctx.currentTime + 0.18;
+    nextStep = 0;
+    running = true;
+    if (schedulerId) clearInterval(schedulerId);
+    schedulerId = setInterval(scheduler, TICK_MS);
+    scheduler();
+  }
+
+  // Slow atmospheric loop for the story cut-scenes (its own timeline).
+  function startCutscene() {
+    bossMode = false;
+    cutsceneMode = true;
+    init();
+    if (ctx.state === "suspended") ctx.resume();
+    startTime = ctx.currentTime + 0.12;
     nextStep = 0;
     running = true;
     if (schedulerId) clearInterval(schedulerId);
@@ -494,6 +563,7 @@ KR.audio = (function () {
   return {
     init: init,
     start: start,
+    startCutscene: startCutscene,
     stop: stop,
     suspend: suspend,
     resume: resume,
