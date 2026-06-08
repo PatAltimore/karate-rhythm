@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#0b0b12" />
-  <title>KARATE RHYTHM — an Apple II–style running fighter</title>
+  <title>Karate Rhythm — a rhythm-based fighter</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -15,12 +15,12 @@
     <div id="hud" aria-hidden="true">
       <div class="hud-top">
         <div class="score-box">
-          <span class="hud-label">SCORE</span>
+          <span class="hud-label">Score</span>
           <span id="score">0</span>
         </div>
         <div class="center-box">
           <div class="level-box">
-            <span class="hud-label" id="act">ACT I</span>
+            <span class="hud-label" id="act">Act I</span>
             <span id="level">1</span>
           </div>
           <div id="beat-dot" title="beat"></div>
@@ -31,12 +31,12 @@
       </div>
 
       <div id="boss-hud" style="display:none">
-        <span class="hud-label">SHOGUN</span>
+        <span class="hud-label">Shogun</span>
         <div class="boss-bar"><div id="boss-fill"></div></div>
       </div>
 
       <div class="strength-wrap">
-        <span class="hud-label">STRENGTH</span>
+        <span class="hud-label">Strength</span>
         <div class="strength-bar">
           <div id="strength-fill"></div>
         </div>
@@ -47,41 +47,36 @@
 
     <!-- Title screen -->
     <div id="title" class="overlay">
-      <h1>KARATE<span>RHYTHM</span></h1>
-      <p class="tag">A running fighter through three acts to the Shogun — in the spirit of Karateka (1984)</p>
+      <h1>Karate<span>Rhythm</span></h1>
+      <p class="tag">A rhythm-based fighter inspired by Karateka</p>
       <ul class="how">
-        <li>You <b>run automatically</b> — the world scrolls past.</li>
-        <li><b>Click / tap / press SPACE</b> on the beat to strike.</li>
-        <li>Foes march in <b>in rhythm</b>; the music <b>darkens</b> each act.</li>
-        <li>Clear <b>ten levels</b>, then duel the <b>Shogun</b> head-to-head.</li>
-        <li>Mistime, or let a blow land, and you <b>lose strength</b>.</li>
+        <li><b>Click / tap / space bar</b> on the beat to attack.</li>
       </ul>
-      <button id="start-btn" class="btn">► BEGIN</button>
-      <p class="hint">Best with sound on. Headphones recommended.</p>
+      <button id="start-btn" class="btn">► Start</button>
     </div>
 
     <!-- Game over screen -->
     <div id="gameover" class="overlay hidden">
-      <h2>YOU HAVE FALLEN</h2>
-      <p class="reached">REACHED LEVEL <span id="final-level">1</span></p>
+      <h2>The End</h2>
+      <p class="reached">Reached level <span id="final-level">1</span></p>
       <div class="final">
-        <div><span class="hud-label">SCORE</span><span id="final-score">0</span></div>
-        <div><span class="hud-label">BEST</span><span id="best-score">0</span></div>
-        <div><span class="hud-label">FOES FELLED</span><span id="final-kills">0</span></div>
-        <div><span class="hud-label">BEST COMBO</span><span id="final-combo">0</span></div>
+        <div><span class="hud-label">Score</span><span id="final-score">0</span></div>
+        <div><span class="hud-label">Best</span><span id="best-score">0</span></div>
+        <div><span class="hud-label">Foes defeated</span><span id="final-kills">0</span></div>
+        <div><span class="hud-label">Best combo</span><span id="final-combo">0</span></div>
       </div>
-      <button id="restart-btn" class="btn">► AGAIN</button>
+      <button id="restart-btn" class="btn">► Try Again</button>
     </div>
 
     <!-- Victory screen -->
     <div id="victory" class="overlay hidden">
-      <h2 class="vict-title">THE SHOGUN FALLS</h2>
-      <p class="reached">THE PALACE IS YOURS</p>
+      <h2 class="vict-title">The Shogun is defeated</h2>
+      <p class="reached">The princess is saved</p>
       <div class="final">
-        <div><span class="hud-label">SCORE</span><span id="vict-score">0</span></div>
-        <div><span class="hud-label">BEST</span><span id="vict-best">0</span></div>
+        <div><span class="hud-label">Score</span><span id="vict-score">0</span></div>
+        <div><span class="hud-label">Best</span><span id="vict-best">0</span></div>
       </div>
-      <button id="victory-btn" class="btn">► PLAY AGAIN</button>
+      <button id="victory-btn" class="btn">► Play Again</button>
     </div>
 
     <!-- Story cut-scenes -->
