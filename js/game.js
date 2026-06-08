@@ -49,8 +49,11 @@
 
   // ---- Final boss duel -------------------------------------------------
   var BOSS_HP = 30;                // clean strikes to fell the Shogun
-  var BOSS_X = 190;                // boss stands here (static screen)
-  var BOSS_HERO_X = 92;            // hero stands here facing the boss
+  var BOSS_X = 190;                // boss's resting spot (static screen)
+  var BOSS_HERO_X = 92;            // hero's resting spot facing the boss
+  var LINE_X = 140;                // clash line on the floor between them
+  var HERO_CLASH_X = 130;          // hero lunges to here on the beat
+  var BOSS_CLASH_X = 151;          // boss lunges to here on the beat — they meet on the line
   var BLOCK_MISS_COST = 12;        // strength lost if you fail to block
   var BOSS_WHIFF_COST = 5;         // strength lost on a mistimed tap
   var DUEL_LEAD_BEATS = 4;         // beats of breathing room before the duel begins
@@ -373,7 +376,7 @@
         heroDuel.pose = typ; heroDuel.poseT = 0.22;  // 'kick' (drum) or 'punch' (cymbal)
         boss.hp -= 1;
         boss.pose = "hit"; boss.poseT = 0.18; boss.hitFlash = 0.16;
-        addSpark(BOSS_X - 16, GROUND_Y - 20, quality);
+        addSpark(LINE_X, GROUND_Y - 18, quality);
         score += quality === "perfect" ? 60 : 30;
         combo++; if (combo > bestCombo) bestCombo = combo;
         if (typ === "kick") { if (audio.playTaiko) audio.playTaiko(); }
@@ -391,22 +394,52 @@
     }
   }
 
+  // f = how close to "on the beat" we are: 1 exactly on the beat, 0 mid-beat.
+  // Both fighters slide toward the clash line, meeting on it as f -> 1, so the
+  // tap moment is the moment you SEE them clash on the line.
+  function duelCloseness() {
+    if (!boss || !audio.ready) return 0;
+    var bb = audio.getCurrentBeat() - boss.startBeat;
+    if (boss.defeated || bb < -3.5) return 0;
+    var phase = bb - Math.floor(bb);
+    return (1 + Math.cos(phase * Math.PI * 2)) / 2;
+  }
+
   function bossRender() {
-    BG.drawBoss(ctx, audio.ready ? audio.getCurrentBeat() : 0);
-    S.shadow(ctx, BOSS_HERO_X, GROUND_Y, 16, 0.3);
-    S.fighter(ctx, BOSS_HERO_X, GROUND_Y, {
+    var nowBeat = audio.ready ? audio.getCurrentBeat() : 0;
+    var f = duelCloseness();
+    var hx = BOSS_HERO_X + (HERO_CLASH_X - BOSS_HERO_X) * f;
+    var bx = BOSS_X - (BOSS_X - BOSS_CLASH_X) * f;
+
+    BG.drawBoss(ctx, nowBeat);
+
+    // the clash line — always visible, flaring as the fighters meet on it
+    var lg = ctx.createLinearGradient(0, GROUND_Y - 42, 0, GROUND_Y);
+    lg.addColorStop(0, "rgba(245,210,120,0)");
+    lg.addColorStop(1, "rgba(245,210,120," + (0.28 + 0.5 * f) + ")");
+    ctx.fillStyle = lg; ctx.fillRect(LINE_X - 4, GROUND_Y - 42, 8, 42);
+    ctx.fillStyle = "rgba(255,236,176," + (0.45 + 0.5 * f) + ")"; // crisp core
+    ctx.fillRect(LINE_X, GROUND_Y - 42, 1, 42);
+    // painted marker on the floor
+    ctx.fillStyle = "rgba(255,228,150," + (0.55 + 0.45 * f) + ")";
+    ctx.fillRect(LINE_X - 7, GROUND_Y + 1, 14, 1);
+    ctx.fillRect(LINE_X - 4, GROUND_Y + 2, 8, 1);
+    ctx.fillRect(LINE_X - 1, GROUND_Y - 1, 2, 2);
+
+    S.shadow(ctx, hx, GROUND_Y, 16, 0.3);
+    S.fighter(ctx, hx, GROUND_Y, {
       facing: 1, pose: heroDuel ? heroDuel.pose : "idle", phase: 0, kit: PLAYER_KIT
     });
     var by = GROUND_Y - (boss ? boss.bob : 0);
-    S.shadow(ctx, BOSS_X, GROUND_Y, 26, 0.34);
-    S.boss(ctx, BOSS_X, by, {
+    S.shadow(ctx, bx, GROUND_Y, 26, 0.34);
+    S.boss(ctx, bx, by, {
       facing: -1, pose: boss ? (boss.defeated ? "defeated" : boss.pose) : "idle"
     });
     if (boss && boss.hitFlash > 0) {
       ctx.save();
       ctx.globalAlpha = boss.hitFlash / 0.16 * 0.5;
       ctx.fillStyle = "#fff";
-      ctx.fillRect(BOSS_X - 16, GROUND_Y - 46, 32, 46);
+      ctx.fillRect(bx - 16, GROUND_Y - 46, 32, 46);
       ctx.restore();
     }
     for (var s = 0; s < sparks.length; s++) S.spark(ctx, sparks[s].x, sparks[s].y, sparks[s].t, sparks[s].color);
@@ -768,8 +801,6 @@
         tapAction();
       } else if (e.key === "m" || e.key === "M") {
         toggleMute();
-      } else if (e.key === "b" || e.key === "B") {
-        startGame(4); // DEBUG: jump straight to the boss duel
       }
     });
 
