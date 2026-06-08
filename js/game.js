@@ -70,6 +70,7 @@
     victory: [{ scene: "dawn",   text: "The Shogun falls. Dawn breaks over the freed castle." }]
   };
   var CUT_PANEL_DUR = 5.5;         // seconds each panel auto-holds (tap to advance)
+  var FADE_DUR = 0.45;             // fade-to-black duration on transitions
 
   // ---- Rhythm charts ---------------------------------------------------
   // Foes arrive on a 16th-note grid (SUB = 4). Each one-bar "groove" is 16
@@ -158,7 +159,7 @@
   var scrollX, elapsed, nextSlot, nextGateLevel, displayLevel;
   var levelOffset = 0, checkpointAct = 1, displayAct = 1;
   var boss = null, heroDuel = null;
-  var cutscene = null, cutsceneAct = 1, runAct = 1;
+  var cutscene = null, cutsceneAct = 1, runAct = 1, transition = null;
   var enemies = [], sparks = [], gates = [], feathers = [];
   var player = { runPhase: 0, kicking: false, kickT: 0 };
 
@@ -470,7 +471,7 @@
     if (audio.playVictory) audio.playVictory();
     best = Math.max(best, score);
     try { localStorage.setItem("kr_best", String(best)); } catch (e) {}
-    pauseForCutscene("victory", showVictoryOverlay);
+    goCutscene("victory", showVictoryOverlay);
   }
 
   function showVictoryOverlay() {
@@ -518,8 +519,32 @@
     done();
   }
 
+  // ---- Fade-to-black transitions ---------------------------------------
+  function fadeThen(mid) { transition = { phase: "out", t: 0, mid: mid }; }
+  function transitionAlpha() {
+    if (!transition) return 0;
+    return transition.phase === "out"
+      ? clamp(transition.t / FADE_DUR, 0, 1)
+      : clamp(1 - transition.t / FADE_DUR, 0, 1);
+  }
+  // Fade out (action frozen) -> show the cut-scene -> fade in; the cut-scene's
+  // end then fades out -> runs after() -> fades in.
+  function goCutscene(key, after) {
+    fadeThen(function () {
+      pauseForCutscene(key, function () { fadeThen(after); });
+    });
+  }
+
   // ---- Update ---------------------------------------------------------
   function update(dt) {
+    if (transition) {
+      transition.t += dt;
+      if (transition.phase === "out") {
+        if (transition.t < FADE_DUR) return;          // action frozen while fading out
+        transition.phase = "in"; transition.t = 0; transition.mid();  // swap scene at black
+      }
+      if (transition.t >= FADE_DUR) transition = null;
+    }
     if (state === "cutscene") {
       if (cutscene) {
         cutscene.t += dt;
@@ -552,10 +577,10 @@
       displayAct = actForLevel(Math.min(el, TOTAL_LEVELS));
       if (el > actEndLevel(runAct)) {
         if (runAct >= 3) {
-          pauseForCutscene("boss", enterBoss);
+          goCutscene("boss", enterBoss);
         } else {
           var nxt = runAct + 1;
-          pauseForCutscene("act" + nxt, function () { startAct(nxt); });
+          goCutscene("act" + nxt, function () { startAct(nxt); });
         }
         return;
       }
@@ -741,6 +766,11 @@
       ctx.fillStyle = "rgba(200,40,40," + (flashDanger / 0.16 * 0.4) + ")";
       ctx.fillRect(0, 0, W, H);
     }
+    var fa = transitionAlpha();
+    if (fa > 0) {
+      ctx.fillStyle = "rgba(0,0,0," + fa.toFixed(3) + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
   }
 
   // ---- HUD ------------------------------------------------------------
@@ -789,7 +819,7 @@
     runAct = 1; checkpointAct = 1; cutsceneAct = 1; displayAct = 1;
     hideOverlays();
     audio.init(); audio.resume();          // unlock audio during this gesture
-    pauseForCutscene("intro", function () { startAct(1); });
+    goCutscene("intro", function () { startAct(1); });
   }
 
   // Begin (or retry) an act of the runner; act 4 hands off to the boss.
