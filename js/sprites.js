@@ -164,6 +164,28 @@ KR.sprites = (function () {
     r(ctx, -2, -19, 6, 2, k.giSh); r(ctx, 4, -19, 2, 2, k.skin);     // crossed guard
   }
 
+  // Bow pose: formal karate bow before the Shogun duel.
+  // Legs upright, torso pitched ~45° forward, head bowed down.
+  function drawBow(ctx, k) {
+    // legs – straight, together
+    r(ctx, -3, -10, 3, 10, k.giSh); r(ctx, -5, -2, 6, 2, PAL.black);
+    r(ctx,  1, -10, 3, 10, k.gi);   r(ctx,  0, -2, 5, 2, PAL.black);
+    // belt at the hinge point
+    r(ctx, -2, -12, 7, 3, k.band);
+    // torso pitched forward – step rects rightward as they go up
+    r(ctx, -1, -16, 7, 4, k.gi);    r(ctx, -1, -16, 2, 4, k.giSh); // lower back
+    r(ctx,  1, -19, 7, 3, k.gi);    r(ctx,  1, -19, 2, 3, k.giSh); // upper torso
+    r(ctx,  0, -16, 1, 7, k.giSh);  // gi seam along the lean
+    // head bowed well forward and low
+    r(ctx, 4, -23, 7, 7, k.skin);
+    r(ctx, 4, -23, 7, 3, k.hair);
+    r(ctx, 4, -22, 1, 2, k.hair);   // sideburn
+    r(ctx, 9, -19, 1, 1, PAL.black); // downward-cast eye
+    // arms hang forward and slightly down
+    r(ctx, 3, -18, 3, 7, k.gi);     r(ctx, 3, -12, 3, 2, k.skin);
+    r(ctx, 5, -17, 2, 6, k.giSh);   r(ctx, 5, -12, 2, 2, k.skin);
+  }
+
   // Head/torso top-left anchors per pose, for the helmet/armour overlay.
   var ANCHOR = {
     run:   { head: { x: -3, y: -25 }, torso: { x: -3, y: -18 } },
@@ -171,7 +193,8 @@ KR.sprites = (function () {
     punch: { head: { x: -2, y: -25 }, torso: { x: -2, y: -18 } },
     block: { head: { x: -4, y: -24 }, torso: { x: -4, y: -17 } },
     kick:  { head: { x: -4, y: -24 }, torso: { x: -4, y: -17 } },
-    hit:   { head: { x: -3, y: -24 }, torso: { x: -3, y: -17 } }
+    hit:   { head: { x: -3, y: -24 }, torso: { x: -3, y: -17 } },
+    bow:   { head: { x:  4, y: -23 }, torso: { x:  1, y: -19 } }
   };
 
   // Kabuto helmet + dō armour overlay for ranked guards. rank: 1 light, 2 full.
@@ -229,6 +252,7 @@ KR.sprites = (function () {
     else if (pose === "idle") drawIdle(ctx, k);
     else if (pose === "punch") drawPunch(ctx, k);
     else if (pose === "block") drawBlock(ctx, k);
+    else if (pose === "bow") drawBow(ctx, k);
     else drawRun(ctx, k, opts.phase || 0);
 
     if (opts.rank) {

@@ -48,21 +48,22 @@
   var HAWK_DIVE = 22;              // how far it swoops down to strike on its beat
 
   // ---- Final boss duel -------------------------------------------------
-  var BOSS_HP = 30;                // clean strikes to fell the Shogun
-  var BOSS_X = 190;                // boss's resting spot (static screen)
-  var BOSS_HERO_X = 92;            // hero's resting spot facing the boss
-  var LINE_X = 140;                // clash line on the floor between them
-  var HERO_CLASH_X = 130;          // hero lunges to here on the beat
-  var BOSS_CLASH_X = 151;          // boss lunges to here on the beat — they meet on the line
-  var BLOCK_MISS_COST = 12;        // strength lost if you fail to block
+  var BOSS_HP = 20;                // counters needed to fell the Shogun
+  var BOSS_REST_X = 232;           // Shogun's resting spot (right)
+  var BOSS_STRIKE_X = 166;         // Shogun lunges to here on the attack beat
+  var DUEL_HERO_X = 122;           // hero holds a fixed stance near centre
+  var ADV_LEAD = 0.5;              // beats the Shogun takes to lunge in
+  var ADV_FOLLOW = 0.42;           // beats it takes to retreat
+  var FIGHT_START = 5;             // duel beats of entrance (walk in, bow, stance)
+  var BLOCK_MISS_COST = 12;        // strength lost when its blow lands
   var BOSS_WHIFF_COST = 5;         // strength lost on a mistimed tap
-  var DUEL_LEAD_BEATS = 4;         // beats of breathing room before the duel begins
 
   // ---- Story cut-scenes (between acts) ---------------------------------
   var CUTSCENES = {
     intro: [
       { scene: "castle", text: "The Shogun has seized the mountain castle — and taken the princess." },
-      { scene: "setout", text: "At dusk you set out alone. Only rhythm and resolve will carry you." }
+      { scene: "setout", text: "At dusk you set out alone. Only rhythm and resolve will carry you." },
+      { scene: "cliff",  text: "You scale the cliff to the palace road above — his guards await." }
     ],
     act2:    [{ scene: "river",  text: "Beyond the river his guards close ranks, and the sky bleeds to dusk." }],
     act3:    [{ scene: "gates",  text: "The castle gates loom. Helmed elites bar the final road." }],
@@ -153,6 +154,10 @@
   var state = "title";            // title | playing | boss | victory | over
   var paused = false;
   var viewScale = 1;
+
+  // ---- Cheat codes (keyboard, title or cut-scene) ---------------------
+  // Type: ACT2, ACT3, BOSS   (case-insensitive, no spaces needed)
+  var cheatBuf = "";
 
   var strength, score, kills, combo, bestCombo;
   var best = 0;
@@ -303,16 +308,45 @@
     }
   }
 
-  // ---- Boss duel -------------------------------------------------------
-  // 8-beat call-and-response on a static screen. Most beats are STRIKE beats
-  // (the hero auto-punches on cymbal beats, kicks on drum beats); two are BLOCK
-  // beats where the boss attacks and a well-timed tap defends. At low health the
-  // boss attacks more often. One input: tap on the beat.
-  function bossBeatType(beatIdx, hpFrac) {
-    var m = ((beatIdx % 8) + 8) % 8;
-    if (m === 3 || m === 7) return "block";
-    if (hpFrac < 0.4 && (m === 1 || m === 5)) return "block"; // enraged
-    return (m % 2 === 0) ? "kick" : "punch";                  // drum vs cymbal
+  // ---- Boss duel (the Shogun) ------------------------------------------
+  // No clash line: the hero walks in, bows, and holds a fixed stance at centre.
+  // The Shogun ADVANCES to strike on attack beats (varied, synced to the music)
+  // then retreats. Tap on the beat it arrives to COUNTER (damage it); miss and
+  // its blow lands (you lose strength). Attacks get denser as its HP falls.
+  var BOSS_PATTERNS = [
+    [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], // phase 0 (HP>60%): steady, every 4 beats
+    [1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,1,0], // phase 1 (30-60%): syncopated
+    [1,0,1,0, 1,0,1,1, 0,1,0,1, 1,0,1,0]  // phase 2 (<30%): relentless
+  ];
+  function bossAttacksOn(idx, hpFrac) {
+    var p = hpFrac > 0.6 ? 0 : hpFrac > 0.3 ? 1 : 2;
+    return BOSS_PATTERNS[p][((idx % 16) + 16) % 16] === 1;
+  }
+  function bossStrikeType(beatIdx) {
+    return (((beatIdx % 2) + 2) % 2 === 0) ? "kick" : "punch"; // drum vs cymbal
+  }
+  function nearestAttack(bb, hpFrac) {     // closest attack beat within +/-1, or null
+    var c = Math.round(bb), best = null, err = Infinity;
+    for (var b = c - 1; b <= c + 1; b++) {
+      if (b >= FIGHT_START && bossAttacksOn(b - FIGHT_START, hpFrac)) {
+        var e = Math.abs(bb - b);
+        if (e < err) { err = e; best = b; }
+      }
+    }
+    return best;
+  }
+  function activeAttack(bb, hpFrac) {       // attack whose lunge window holds bb
+    for (var b = Math.ceil(bb - ADV_FOLLOW); b <= Math.floor(bb + ADV_LEAD); b++) {
+      if (b >= FIGHT_START && bossAttacksOn(b - FIGHT_START, hpFrac) &&
+          bb >= b - ADV_LEAD && bb <= b + ADV_FOLLOW) return b;
+    }
+    return null;
+  }
+  function bossDuelX(bb, hpFrac) {
+    var B = activeAttack(bb, hpFrac);
+    if (B === null) return BOSS_REST_X;     // standing back at rest
+    if (bb < B) return lerp(BOSS_REST_X, BOSS_STRIKE_X, clamp((bb - (B - ADV_LEAD)) / ADV_LEAD, 0, 1));
+    return lerp(BOSS_STRIKE_X, BOSS_REST_X, clamp((bb - B) / ADV_FOLLOW, 0, 1));
   }
 
   function enterBoss() {
@@ -326,8 +360,8 @@
     audio.start();                         // boss music on a fresh timeline
     boss = {
       hp: BOSS_HP, pose: "idle", poseT: 0, bob: 0, hitFlash: 0,
-      startBeat: Math.ceil(audio.getCurrentBeat()) + DUEL_LEAD_BEATS,
-      checkBeat: 0, resolved: {}, defeated: false, defeatT: 0
+      startBeat: Math.ceil(audio.getCurrentBeat()),
+      checkBeat: FIGHT_START, resolved: {}, defeated: false, defeatT: 0
     };
     heroDuel = { pose: "idle", poseT: 0 };
     popup("THE SHOGUN", "level", W / 2, 38);
@@ -339,35 +373,26 @@
     if (!boss || !audio.ready) return;
     var nowBeat = audio.getCurrentBeat();
     var bb = nowBeat - boss.startBeat;
-    boss.bob = Math.sin(nowBeat * Math.PI * 2) * 1.2;
+    boss.bob = Math.sin(nowBeat * Math.PI * 2) * 1.0;
     if (boss.hitFlash > 0) boss.hitFlash -= dt;
     if (heroDuel.poseT > 0 && (heroDuel.poseT -= dt) <= 0) heroDuel.pose = "idle";
     if (boss.poseT > 0 && (boss.poseT -= dt) <= 0) boss.pose = "idle";
 
     if (boss.defeated) {
       boss.defeatT += dt;
-      if (boss.defeatT > 1.7) victory();
+      if (boss.defeatT > 1.8) victory();
       return;
     }
 
     var hpFrac = boss.hp / BOSS_HP;
-
-    // telegraph: wind up ~0.5 beat before a block beat
-    if (bb >= -1 && boss.pose === "idle") {
-      var nb = Math.ceil(bb - 0.0001);
-      if (bossBeatType(nb, hpFrac) === "block" && nb - bb < 0.5) {
-        boss.pose = "windup"; boss.poseT = 0.5;
-      }
-    }
-
-    // resolve beats past their hit window: an un-blocked attack lands
-    var lastResolvable = Math.floor(bb - HIT_GOOD / audio.beatDuration);
-    while (boss.checkBeat <= lastResolvable) {
+    // an attack beat past its counter window that wasn't countered -> its blow lands
+    var lastB = Math.floor(bb - HIT_GOOD / audio.beatDuration);
+    while (boss.checkBeat <= lastB) {
       var b = boss.checkBeat;
-      if (b >= 0 && !boss.resolved[b] && bossBeatType(b, hpFrac) === "block") {
-        boss.resolved[b] = true;
-        boss.pose = "attack"; boss.poseT = 0.3;
-        heroDuel.pose = "hit"; heroDuel.poseT = 0.3;
+      if (b >= FIGHT_START && bossAttacksOn(b - FIGHT_START, hpFrac) && !boss.resolved[b]) {
+        boss.resolved[b] = "hit";
+        heroDuel.pose = "hit"; heroDuel.poseT = 0.35;
+        boss.pose = "attack"; boss.poseT = 0.22;
         strength -= BLOCK_MISS_COST; combo = 0;
         shake(4.5, 0.3); flashDanger = 0.18;
         audio.playMiss();
@@ -380,84 +405,65 @@
   function bossAttack() {
     if (state !== "boss" || !boss || boss.defeated) return;
     var bb = audio.getCurrentBeat() - boss.startBeat;
-    if (bb < -0.5) return;                          // duel hasn't begun
-    var nb = Math.round(bb);
-    var errSec = Math.abs(bb - nb) * audio.beatDuration;
+    if (bb < FIGHT_START - 0.3) return;     // ignore taps during the entrance
     var hpFrac = boss.hp / BOSS_HP;
+    var B = nearestAttack(bb, hpFrac);
+    var errSec = B === null ? Infinity : Math.abs(bb - B) * audio.beatDuration;
 
-    if (errSec <= HIT_GOOD && nb >= 0 && !boss.resolved[nb]) {
-      boss.resolved[nb] = true;
-      var typ = bossBeatType(nb, hpFrac);
-      if (typ === "block") {
-        heroDuel.pose = "block"; heroDuel.poseT = 0.26;
-        if (audio.playCymbal) audio.playCymbal();
-      } else {
-        var quality = errSec <= HIT_PERFECT ? "perfect" : "good";
-        heroDuel.pose = typ; heroDuel.poseT = 0.22;  // 'kick' (drum) or 'punch' (cymbal)
-        boss.hp -= 1;
-        boss.pose = "hit"; boss.poseT = 0.18; boss.hitFlash = 0.16;
-        addSpark(LINE_X, GROUND_Y - 18, quality);
-        score += quality === "perfect" ? 60 : 30;
-        combo++; if (combo > bestCombo) bestCombo = combo;
-        if (typ === "kick") { if (audio.playTaiko) audio.playTaiko(); }
-        else { if (audio.playCymbal) audio.playCymbal(); }
-        if (boss.hp <= 0) {
-          boss.hp = 0; boss.defeated = true; boss.defeatT = 0;
-          boss.pose = "hit"; score += 500; flashT = 0.3;
-        }
+    if (B !== null && errSec <= HIT_GOOD && !boss.resolved[B]) {
+      // COUNTER the Shogun's attack
+      boss.resolved[B] = "counter";
+      var quality = errSec <= HIT_PERFECT ? "perfect" : "good";
+      var typ = bossStrikeType(B);          // kick (drum) or punch (cymbal)
+      heroDuel.pose = typ; heroDuel.poseT = 0.24;
+      boss.hp -= 1;
+      boss.pose = "hit"; boss.poseT = 0.4; boss.hitFlash = 0.18;
+      addSpark(BOSS_STRIKE_X - 14, GROUND_Y - 18, quality);
+      score += quality === "perfect" ? 70 : 40;
+      combo++; if (combo > bestCombo) bestCombo = combo;
+      if (typ === "kick") { if (audio.playTaiko) audio.playTaiko(); }
+      else { if (audio.playCymbal) audio.playCymbal(); }
+      if (boss.hp <= 0) {
+        boss.hp = 0; boss.defeated = true; boss.defeatT = 0;
+        boss.pose = "hit"; score += 600; flashT = 0.3;
       }
     } else {
-      heroDuel.pose = "punch"; heroDuel.poseT = 0.2;
+      heroDuel.pose = "punch"; heroDuel.poseT = 0.18;
       strength -= BOSS_WHIFF_COST; combo = 0;
       audio.playMiss();
       if (strength <= 0) gameOver();
     }
   }
 
-  // f = how close to "on the beat" we are: 1 exactly on the beat, 0 mid-beat.
-  // Both fighters slide toward the clash line, meeting on it as f -> 1, so the
-  // tap moment is the moment you SEE them clash on the line.
-  function duelCloseness() {
-    if (!boss || !audio.ready) return 0;
-    var bb = audio.getCurrentBeat() - boss.startBeat;
-    if (boss.defeated || bb < -3.5) return 0;
-    var phase = bb - Math.floor(bb);
-    return (1 + Math.cos(phase * Math.PI * 2)) / 2;
-  }
-
   function bossRender() {
     var nowBeat = audio.ready ? audio.getCurrentBeat() : 0;
-    var f = duelCloseness();
-    var hx = BOSS_HERO_X + (HERO_CLASH_X - BOSS_HERO_X) * f;
-    var bx = BOSS_X - (BOSS_X - BOSS_CLASH_X) * f;
-
+    var bb = boss ? nowBeat - boss.startBeat : 0;
+    var hpFrac = boss ? boss.hp / BOSS_HP : 1;
     BG.drawBoss(ctx, nowBeat);
 
-    // the clash line — always visible, flaring as the fighters meet on it
-    var lg = ctx.createLinearGradient(0, GROUND_Y - 42, 0, GROUND_Y);
-    lg.addColorStop(0, "rgba(245,210,120,0)");
-    lg.addColorStop(1, "rgba(245,210,120," + (0.28 + 0.5 * f) + ")");
-    ctx.fillStyle = lg; ctx.fillRect(LINE_X - 4, GROUND_Y - 42, 8, 42);
-    ctx.fillStyle = "rgba(255,236,176," + (0.45 + 0.5 * f) + ")"; // crisp core
-    ctx.fillRect(LINE_X, GROUND_Y - 42, 1, 42);
-    // painted marker on the floor
-    ctx.fillStyle = "rgba(255,228,150," + (0.55 + 0.45 * f) + ")";
-    ctx.fillRect(LINE_X - 7, GROUND_Y + 1, 14, 1);
-    ctx.fillRect(LINE_X - 4, GROUND_Y + 2, 8, 1);
-    ctx.fillRect(LINE_X - 1, GROUND_Y - 1, 2, 2);
-
+    // hero: walks in, bows, takes a stance; then fixed at centre
+    var hx = DUEL_HERO_X, hpose = heroDuel ? heroDuel.pose : "idle";
+    if (boss && bb < FIGHT_START) {
+      if (bb < 2) { hx = lerp(-14, DUEL_HERO_X, clamp(bb / 2, 0, 1)); hpose = "run"; }
+      else if (bb < 3.2) hpose = "bow";
+      else hpose = "idle";
+    }
     S.shadow(ctx, hx, GROUND_Y, 16, 0.3);
-    S.fighter(ctx, hx, GROUND_Y, {
-      facing: 1, pose: heroDuel ? heroDuel.pose : "idle", phase: 0, kit: PLAYER_KIT
-    });
-    var by = GROUND_Y - (boss ? boss.bob : 0);
+    S.fighter(ctx, hx, GROUND_Y, { facing: 1, pose: hpose, phase: bb * 1.6, kit: PLAYER_KIT });
+
+    // the Shogun: advances to strike on attack beats, then retreats
+    var bx = boss ? bossDuelX(bb, hpFrac) : BOSS_REST_X;
+    var bpose = "idle";
+    if (boss) {
+      if (boss.defeated) bpose = "defeated";
+      else if (boss.poseT > 0) bpose = boss.pose;
+      else if (activeAttack(bb, hpFrac) !== null) bpose = "attack";
+    }
     S.shadow(ctx, bx, GROUND_Y, 26, 0.34);
-    S.boss(ctx, bx, by, {
-      facing: -1, pose: boss ? (boss.defeated ? "defeated" : boss.pose) : "idle"
-    });
+    S.boss(ctx, bx, GROUND_Y - (boss ? boss.bob : 0), { facing: -1, pose: bpose });
     if (boss && boss.hitFlash > 0) {
       ctx.save();
-      ctx.globalAlpha = boss.hitFlash / 0.16 * 0.5;
+      ctx.globalAlpha = boss.hitFlash / 0.18 * 0.5;
       ctx.fillStyle = "#fff";
       ctx.fillRect(bx - 16, GROUND_Y - 46, 32, 46);
       ctx.restore();
@@ -885,6 +891,24 @@
     viewScale = w / W;
   }
 
+  // ---- Cheat activation -----------------------------------------------
+  function cheatActivate(act) {
+    cheatBuf = "";
+    audio.init(); audio.resume();    // unlock audio on this user gesture
+    audio.stop();                    // kill any cut-scene music
+    resetState();
+    checkpointAct = act; cutsceneAct = act;
+    cutscene = null; transition = null;
+    if (cutsceneEl) cutsceneEl.classList.add("hidden");
+    if (audio.setBossMode) audio.setBossMode(false);
+    hideOverlays();
+    flashT = 0.4;                    // white flash = acknowledgement
+    fadeThen(function () {
+      if (act === 4) enterBoss();
+      else startAct(act);
+    });
+  }
+
   // ---- Input ----------------------------------------------------------
   function tapAction() {
     if (state === "playing") attack();
@@ -908,6 +932,20 @@
         tapAction();
       } else if (e.key === "m" || e.key === "M") {
         toggleMute();
+      }
+
+      // Cheat codes: type ACT2 / ACT3 / BOSS during the title or cut-scene.
+      if (state === "title" || state === "cutscene") {
+        var ch = e.key.length === 1 ? e.key.toUpperCase() : "";
+        if (ch && /[A-Z0-9]/.test(ch)) {
+          cheatBuf = (cheatBuf + ch).slice(-8);
+          var tail = cheatBuf.slice(-4);
+          if (tail === "ACT2") { cheatActivate(2); }
+          else if (tail === "ACT3") { cheatActivate(3); }
+          else if (tail === "BOSS") { cheatActivate(4); }
+        }
+      } else {
+        cheatBuf = "";   // clear buffer when not on title/cutscene
       }
     });
 

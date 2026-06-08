@@ -547,6 +547,37 @@ KR.bg = (function () {
       SP.boss(ctx, 150, gy, { facing: -1, pose: "idle" });
       var hx = -12 + Math.min(1, t / 2.2) * 72;                // hero strides in
       SP.fighter(ctx, hx, gy, { facing: 1, pose: t < 2.2 ? "run" : "idle", phase: t * 1.6 });
+    } else if (scene === "cliff") {
+      // Hero scales a sheer cliff face to reach the palace road above.
+      // Left strip: dusk sky + bridge ledge the hero is climbing up to.
+      // Right: dark rock face.
+      cutSky(ctx, "dusk");
+      var cEdge = 66;
+      // cliff face (fills right side of screen)
+      ctx.fillStyle = "#1c1530";
+      ctx.fillRect(cEdge, 0, WIDTH - cEdge, HEIGHT);
+      // rocky strata texture
+      ctx.fillStyle = "#2a2046";
+      var strata = [7, 24, 40, 57, 74, 91, 108, 124, 140];
+      for (var si = 0; si < strata.length; si++) {
+        ctx.fillRect(cEdge + 6 + (si % 3) * 12, strata[si], 18 + (si * 11) % 36, 1);
+      }
+      ctx.fillStyle = "#342d54"; // lighter highlight stripe mid-cliff
+      ctx.fillRect(cEdge + 22, 30, 10, HEIGHT - 30);
+      ctx.fillStyle = "#0e0b1a"; // deep shadow crack at the edge
+      ctx.fillRect(cEdge - 3, 0, 4, HEIGHT);
+      // Bridge platform ledge at the top left (where the hero arrives)
+      ctx.fillStyle = "#7a5630";
+      ctx.fillRect(0, gy, cEdge - 2, 12);
+      ctx.fillStyle = "#a8763e";
+      ctx.fillRect(0, gy, cEdge - 2, 1);
+      for (var cpx = -2; cpx < cEdge; cpx += 11)
+        ctx.fillRect(Math.round(cpx), gy, 1, 12);
+      // Hero climbs from below the screen up to platform height
+      var climbFrac = Math.min(1, t / 3.8);
+      var climbEase = 1 - (1 - climbFrac) * (1 - climbFrac); // ease-out
+      var hcy = Math.round(HEIGHT + 14 - (HEIGHT + 14 - gy) * climbEase);
+      SP.fighter(ctx, cEdge - 10, hcy, { facing: 1, pose: "run", phase: t * 2.4 });
     } else if (scene === "dawn") {
       cutSky(ctx, "dawn");
       cutMoon(ctx, 150, 150 - Math.min(1, t / 2.6) * 92, 18, true); // sun rises
