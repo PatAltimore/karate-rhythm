@@ -758,82 +758,97 @@ KR.bg = (function () {
     ctx.fillStyle = SL; ctx.fillRect(cx - 8, 46, 16, 3);
   }
 
-  // ---- Gate dispatcher: picks the right arch style for the current act --
-  function gate(ctx, cx, gY, act) {
-    if (act === 2) { woodArch(ctx, cx, gY); return; }
-    if (act === 3) { stoneArch(ctx, cx, gY); return; }
-    torii(ctx, cx, gY);
+  // ---- Gate dispatcher: background layer (arch header + FAR/LEFT pillar) -
+  // The left pillar is drawn full-height BEFORE the hero so the hero appears
+  // to walk IN FRONT of it — it recedes as you enter the gate.
+  // The right (near/foreground) pillar is drawn separately after the hero.
+
+  function toriiLeftPillar(ctx, cx) {
+    // Aligns exactly with torii's left structural post (cx - 30, width 7)
+    var V = "#b5402c", VD = "#7a2418", VL = "#cf5a40", K = "#2a0f0a";
+    var px = cx - 33; // left edge of the left post
+    ctx.fillStyle = V;  ctx.fillRect(px, 0, 7, HEIGHT);
+    ctx.fillStyle = VD; ctx.fillRect(px, 0, 2, HEIGHT);
+    ctx.fillStyle = VL; ctx.fillRect(px + 5, 0, 1, HEIGHT);
+    ctx.fillStyle = K;  ctx.fillRect(px - 1, GROUND_Y - 2, 9, 2);
   }
 
-  // ---- Gate foreground layer: full-height pillars drawn OVER the hero ---
-  // Splitting each gate into a background arch (pre-fighters) + foreground
-  // columns (post-fighters) gives the sensation of running BETWEEN two
-  // tall pillars as you cross each level boundary.
-  //
-  // Foreground columns fade in as the gate approaches (cx ≈ 200→120) and
-  // remain fully opaque while the hero passes through.
-  // Lit inner faces face the hero; shadow falls on outer faces.
+  function woodArchLeftPost(ctx, cx) {
+    // Aligns with woodArch left upright (cx - 38, PW 10)
+    var S = "#281c0e", SL = "#3c2618", SD = "#140a04";
+    ctx.fillStyle = S;  ctx.fillRect(cx - 38, 0, 10, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(cx - 38, 0, 2, HEIGHT);
+    ctx.fillStyle = SL; ctx.fillRect(cx - 30, 0, 1, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(cx - 40, GROUND_Y - 4, 14, 4);
+  }
+
+  function stoneArchLeftColumn(ctx, cx) {
+    // Aligns with stoneArch left shaft (cx - 40, SW 14)
+    var S = "#1e1a30", SL = "#2c2844", SD = "#0e0c1e", G = "#c49430";
+    var lx = cx - 40;
+    var py;
+    ctx.fillStyle = S;  ctx.fillRect(lx, 0, 14, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(lx, 0, 2, HEIGHT);
+    ctx.fillStyle = SL; ctx.fillRect(lx + 12, 0, 1, HEIGHT);
+    ctx.fillStyle = G;
+    for (py = 10; py < HEIGHT - 4; py += 26) ctx.fillRect(lx + 2, py, 10, 1);
+    ctx.fillStyle = SD; ctx.fillRect(lx - 2, GROUND_Y - 6, 18, 6);
+    ctx.fillStyle = G;  ctx.fillRect(lx - 1, GROUND_Y - 5, 16, 1);
+  }
+
+  function gate(ctx, cx, gY, act) {
+    cx = Math.round(cx);
+    // Draw the full-height LEFT pillar first (behind hero), then the arch art
+    if (act === 2) { woodArchLeftPost(ctx, cx); woodArch(ctx, cx, gY); return; }
+    if (act === 3) { stoneArchLeftColumn(ctx, cx); stoneArch(ctx, cx, gY); return; }
+    toriiLeftPillar(ctx, cx); torii(ctx, cx, gY);
+  }
+
+  // ---- Gate foreground layer: only the NEAR/RIGHT pillar over the hero ----
+  // Drawn AFTER the hero so it appears in front — hero is sandwiched between
+  // the far-left column (background) and the near-right column (foreground).
+  // The right pillar fades in as the gate approaches (cx 200→120) so it
+  // materialises naturally before the hero reaches the opening.
 
   function toriiFore(ctx, cx) {
+    // Aligns with torii's right post (cx + 30 centre, width 7)
     var V = "#b5402c", VD = "#7a2418", VL = "#cf5a40", K = "#2a0f0a";
-    var PASS = 28, PW = 14;
-    var lx = cx - PASS - PW, rx = cx + PASS;
-    // Left pillar — lit on the right (inner) face
-    ctx.fillStyle = V;  ctx.fillRect(lx, 0, PW, HEIGHT);
-    ctx.fillStyle = VD; ctx.fillRect(lx, 0, 3, HEIGHT);
-    ctx.fillStyle = VL; ctx.fillRect(lx + PW - 1, 0, 1, HEIGHT);
-    ctx.fillStyle = K;  ctx.fillRect(lx - 1, GROUND_Y - 2, PW + 2, 3);
-    // Right pillar — lit on the left (inner) face
-    ctx.fillStyle = V;  ctx.fillRect(rx, 0, PW, HEIGHT);
-    ctx.fillStyle = VL; ctx.fillRect(rx, 0, 1, HEIGHT);
-    ctx.fillStyle = VD; ctx.fillRect(rx + PW - 3, 0, 3, HEIGHT);
-    ctx.fillStyle = K;  ctx.fillRect(rx - 1, GROUND_Y - 2, PW + 2, 3);
+    var px = cx + 27; // left edge of right post
+    ctx.fillStyle = V;  ctx.fillRect(px, 0, 7, HEIGHT);
+    ctx.fillStyle = VL; ctx.fillRect(px, 0, 1, HEIGHT);
+    ctx.fillStyle = VD; ctx.fillRect(px + 4, 0, 2, HEIGHT);
+    ctx.fillStyle = K;  ctx.fillRect(px - 1, GROUND_Y - 2, 9, 2);
   }
 
   function woodArchFore(ctx, cx) {
+    // Aligns with woodArch right upright (cx + 28, PW 10)
     var S = "#281c0e", SL = "#3c2618", SD = "#140a04";
-    var PASS = 28, PW = 12;
-    var lx = cx - PASS - PW, rx = cx + PASS;
-    // Left post — lit on the right (inner) face
-    ctx.fillStyle = S;  ctx.fillRect(lx, 0, PW, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(lx, 0, 2, HEIGHT);
-    ctx.fillStyle = SL; ctx.fillRect(lx + PW - 1, 0, 1, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(lx - 2, GROUND_Y - 4, PW + 4, 4);
-    // Right post — lit on the left (inner) face
-    ctx.fillStyle = S;  ctx.fillRect(rx, 0, PW, HEIGHT);
-    ctx.fillStyle = SL; ctx.fillRect(rx, 0, 1, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(rx + PW - 2, 0, 2, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(rx - 2, GROUND_Y - 4, PW + 4, 4);
+    ctx.fillStyle = S;  ctx.fillRect(cx + 28, 0, 10, HEIGHT);
+    ctx.fillStyle = SL; ctx.fillRect(cx + 28, 0, 1, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(cx + 36, 0, 2, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(cx + 26, GROUND_Y - 4, 14, 4);
   }
 
   function stoneArchFore(ctx, cx) {
+    // Aligns with stoneArch right shaft (cx + 26, SW 14)
     var S = "#1e1a30", SL = "#2c2844", SD = "#0e0c1e", G = "#c49430";
-    var PASS = 28, PW = 16;
-    var lx = cx - PASS - PW, rx = cx + PASS;
+    var rx = cx + 26;
     var py;
-    // Left column — lit on the right (inner) face
-    ctx.fillStyle = S;  ctx.fillRect(lx, 0, PW, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(lx, 0, 2, HEIGHT);
-    ctx.fillStyle = SL; ctx.fillRect(lx + PW - 1, 0, 1, HEIGHT);
-    ctx.fillStyle = G;
-    for (py = 10; py < HEIGHT - 4; py += 26) ctx.fillRect(lx + 2, py, PW - 4, 1);
-    ctx.fillStyle = SD; ctx.fillRect(lx - 2, GROUND_Y - 6, PW + 4, 6);
-    ctx.fillStyle = G;  ctx.fillRect(lx - 1, GROUND_Y - 5, PW + 2, 1);
-    // Right column — lit on the left (inner) face
-    ctx.fillStyle = S;  ctx.fillRect(rx, 0, PW, HEIGHT);
+    ctx.fillStyle = S;  ctx.fillRect(rx, 0, 14, HEIGHT);
     ctx.fillStyle = SL; ctx.fillRect(rx, 0, 1, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(rx + PW - 2, 0, 2, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(rx + 12, 0, 2, HEIGHT);
     ctx.fillStyle = G;
-    for (py = 10; py < HEIGHT - 4; py += 26) ctx.fillRect(rx + 2, py, PW - 4, 1);
-    ctx.fillStyle = SD; ctx.fillRect(rx - 2, GROUND_Y - 6, PW + 4, 6);
-    ctx.fillStyle = G;  ctx.fillRect(rx - 1, GROUND_Y - 5, PW + 2, 1);
+    for (py = 10; py < HEIGHT - 4; py += 26) ctx.fillRect(rx + 2, py, 10, 1);
+    ctx.fillStyle = SD; ctx.fillRect(rx - 2, GROUND_Y - 6, 18, 6);
+    ctx.fillStyle = G;  ctx.fillRect(rx - 1, GROUND_Y - 5, 16, 1);
   }
 
-  // Foreground dispatcher: fades in as gate approaches (cx 200→120),
-  // fully opaque while hero passes through, then exits with the gate.
+  // Foreground dispatcher — right pillar only, fades in as gate approaches.
   function gateFore(ctx, cx, gY, act) {
     cx = Math.round(cx);
-    if (cx < -60 || cx > WIDTH + 20) return;  // fully off-screen: skip
+    if (cx < -60 || cx > WIDTH + 20) return;
+    // Fade in the near pillar as the gate scrolls into the hero's zone.
+    // Full opacity once cx < 120 (hero is inside or past the opening).
     var alpha = Math.max(0, Math.min(1, (200 - cx) / 80));
     if (alpha <= 0) return;
     ctx.save();
