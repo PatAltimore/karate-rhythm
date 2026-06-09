@@ -51,8 +51,6 @@ KR.sprites = (function () {
   function drawRun(ctx, k, phase) {
     var f = ((phase % 1) + 1) % 1;       // 0..1, always positive
     var frame = Math.floor(f * 4);        // 0-3
-    var isFloat = (frame === 1 || frame === 3);
-    if (isFloat) { ctx.save(); ctx.translate(0, -1); } // body rises on float frames
 
     // LEGS — drawn first, behind torso
     if (frame === 0) {
@@ -118,7 +116,6 @@ KR.sprites = (function () {
       r(ctx, -3, -19, 2, 2, k.skin);  // left fist: shoulder height (no higher)
     }
 
-    if (isFloat) ctx.restore();
   }
 
   // 3-phase kick:  0..0.30 = chamber, 0.30..0.65 = extension, 0.65..1 = retract.

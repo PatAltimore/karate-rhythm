@@ -48,15 +48,18 @@
   var HAWK_DIVE = 22;              // how far it swoops down to strike on its beat
 
   // ---- Final boss duel (scrolling-dot rhythm lane) ---------------------
-  var BOSS_HP = 16;               // punch-dots needed to fell the Shogun
+  var BOSS_HP = 80;               // punch-dots needed to fell the Shogun
   var DUEL_HERO_X = 122;          // hero's x in the duel (centre-left)
   var DUEL_BOSS_X = 140;          // boss's x in the duel (centre, 18px gap → punches land)
   var FIGHT_START = 5;            // entrance beats before dots start flowing
-  var BLOCK_MISS_COST = 12;       // strength lost on a missed block dot
-  var BOSS_WHIFF_COST = 8;        // strength lost for tapping with no dot at the line
+  var BLOCK_MISS_COST = 25;       // strength lost on a missed block dot
+  var BOSS_WHIFF_COST = 15;       // strength lost for tapping with no dot at the line
+  var PLAYER_REGEN = 4;           // strength/second passive recovery during duel
+  var BOSS_REGEN = 0.1;           // HP/second the Shogun recovers (was 0.5 — too fast, neutralised punches)
   var DUEL_HIT_X = 140;           // x of the tap/hit line (canvas centre)
   var DUEL_PX_BEAT = 65;          // pixels a dot travels per beat
   var DUEL_LOOKAHEAD = 3.5;       // beats of look-ahead (how far right dots appear)
+  var DUEL_STEP = 0.5;            // beats per pattern step (8th-note resolution)
 
   // ---- Story cut-scenes (between acts) ---------------------------------
   var CUTSCENES = {
@@ -150,7 +153,7 @@
 
   // ---- State ----------------------------------------------------------
   var canvas, ctx, hud, popupLayer, scoreEl, comboEl, fillEl, beatDot, levelEl, muteBtn;
-  var actEl, bossHud, bossFill, titleEl, gameoverEl, victoryEl, cutsceneEl, cutsceneTextEl;
+  var actEl, bossHud, bossFill, strengthWrap, titleEl, gameoverEl, victoryEl, cutsceneEl, cutsceneTextEl;
 
   var state = "title";            // title | playing | boss | victory | over
   var paused = false;
@@ -314,15 +317,17 @@
   // line (DUEL_HIT_X).  P = punch (damages boss), B = block (deflects boss
   // attack — miss it and you take damage). Patterns loop; phase escalates as
   // boss HP falls.
+  // Each character = one 8th-note step (DUEL_STEP = 0.5 beats).
+  // Odd-index chars land on the "and" of the beat — the source of syncopation.
   var DUEL_PATTERNS = [
-    "P..B..P..B..P..B",   // phase 0 (HP>60%): action every 3 beats — learn the rhythm
-    "P.B.P.B.PPB.P.B.",   // phase 1 (30–60%): every 2 beats with a punch doublet
-    "PPBPPB.PPBPPB.PP"    // phase 2 (<30%):  relentless PPB triplets, almost no rest
+    "P...B.P...B.P...",   // phase 0: clave-feel — P every 3 beats, B offset by 2 (all on-beat, varied spacing)
+    "P.PB..P.PB..P.P.",   // phase 1: punch doublets + off-beat block at 1.5 / 4.5 beats
+    "PPB.PPB.PPB.PPB."    // phase 2: rapid PP pair then on-beat B, every 2 beats — relentless
   ];
   function bossDuelPhase() {
     if (!boss) return 0;
     var f = boss.hp / BOSS_HP;
-    return f > 0.6 ? 0 : f > 0.3 ? 1 : 2;
+    return f > 0.9 ? 0 : f > 0.5 ? 1 : 2;
   }
 
   function enterBoss() {
@@ -367,8 +372,12 @@
 
     if (fightBeat < 0) return;  // still in the entrance sequence
 
-    // Spawn dots: look DUEL_LOOKAHEAD+1 beats ahead of the current position
-    var spawnUpTo = Math.floor(fightBeat + DUEL_LOOKAHEAD + 1);
+    // Passive regen: player recovers slowly, Shogun recovers faster
+    strength = Math.min(START_STRENGTH, strength + PLAYER_REGEN * dt);
+    if (!boss.defeated) boss.hp = Math.min(BOSS_HP, boss.hp + BOSS_REGEN * dt);
+
+    // Spawn dots: iterate in 8th-note steps; beatIdx stored as fractional beats
+    var spawnUpTo = Math.floor((fightBeat + DUEL_LOOKAHEAD + 1) / DUEL_STEP);
     while (boss.spawnedThrough < spawnUpTo) {
       boss.spawnedThrough++;
       var idx = boss.spawnedThrough;
@@ -376,7 +385,7 @@
       var pat = DUEL_PATTERNS[bossDuelPhase()];
       var ch = pat[idx % pat.length];
       if (ch === "P" || ch === "B") {
-        boss.dots.push({ beatIdx: idx, type: ch === "P" ? "punch" : "block",
+        boss.dots.push({ beatIdx: idx * DUEL_STEP, type: ch === "P" ? "punch" : "block",
                          hit: false, missed: false });
       }
     }
@@ -515,71 +524,97 @@
   }
 
   function drawDuelLane(ctx, fightBeat, nowBeat) {
-    var lTop = GROUND_Y + 3;                             // y = 153
-    var lBot = H - 2;                                    // y = 190
-    var lMid = Math.round((lTop + lBot) / 2);            // y = 171
+    var lH   = 16;                          // compact strip height
+    var lTop = GROUND_Y;                    // flush with the floor
+    var lBot = lTop + lH;                   // y = 166
+    var lMid = lTop + Math.floor(lH / 2);  // y = 158
     var hitX = DUEL_HIT_X;
     var ppb  = DUEL_PX_BEAT;
 
-    // Lane background
-    ctx.fillStyle = "#080614";
-    ctx.fillRect(0, lTop, W, lBot - lTop);
+    // Floor strip background
+    ctx.fillStyle = "#08061a";
+    ctx.fillRect(0, lTop, W, lH);
 
-    // Center track groove
-    ctx.fillStyle = "#18142a";
-    ctx.fillRect(0, lMid - 2, W, 5);
+    // Top border — the floor line the fighters stand on
+    ctx.fillStyle = "#3a2e58";
+    ctx.fillRect(0, lTop, W, 2);
 
-    // Tap-zone glow around the hit line (pulses on the beat)
+    // Bottom border
+    ctx.fillStyle = "#1e1830";
+    ctx.fillRect(0, lBot - 1, W, 1);
+
+    // Center groove
+    ctx.fillStyle = "#14102a";
+    ctx.fillRect(0, lMid - 1, W, 2);
+
+    // Tap-zone glow (pulses on the beat)
     var beatFrac = ((fightBeat % 1) + 1) % 1;
     var pulse = Math.max(0, 1 - beatFrac * 4);
     ctx.save();
-    ctx.globalAlpha = 0.10 + pulse * 0.18;
+    ctx.globalAlpha = 0.12 + pulse * 0.20;
     ctx.fillStyle = "#ffe050";
-    ctx.fillRect(hitX - 7, lTop, 14, lBot - lTop);
+    ctx.fillRect(hitX - 6, lTop + 2, 12, lH - 3);
     ctx.restore();
 
     // Hit line
     ctx.fillStyle = "#ffe050";
-    ctx.fillRect(hitX - 1, lTop, 2, lBot - lTop);
-
-    // Dot legend: tiny colored squares at the far-left of the lane
-    ctx.fillStyle = "#ff5500";
-    ctx.fillRect(4, lTop + 4, 5, 5);   // orange = punch
-    ctx.fillStyle = "#2255ff";
-    ctx.fillRect(4, lTop + 12, 5, 5);  // blue = block
+    ctx.fillRect(hitX - 1, lTop + 2, 2, lH - 3);
 
     // Dots
     if (boss && fightBeat >= -DUEL_LOOKAHEAD) {
       for (var i = 0; i < boss.dots.length; i++) {
         var d = boss.dots[i];
         var dx = Math.round(hitX + (d.beatIdx - fightBeat) * ppb);
-        if (dx < -12 || dx > W + 12) continue;
+        if (dx < -8 || dx > W + 8) continue;
 
-        var age = fightBeat - d.beatIdx;   // positive = past the line
+        var age = fightBeat - d.beatIdx;
         var alpha = 1;
-        if (d.hit)    alpha = Math.max(0, 1 - age * 5);   // fade out quickly on hit
+        if (d.hit)    alpha = Math.max(0, 1 - age * 5);
         if (d.missed && d.type !== "block") alpha = Math.max(0, 0.5 - age * 2);
-
         if (alpha <= 0) continue;
+
         ctx.save();
         ctx.globalAlpha = alpha;
 
         if (d.type === "punch") {
-          // Orange square with two horizontal bars (fist symbol)
-          ctx.fillStyle = d.hit ? "#55ff55" : d.missed ? "#442200" : "#ff5500";
-          ctx.fillRect(dx - 5, lMid - 5, 10, 10);
-          ctx.fillStyle = d.hit ? "#004400" : "#ffaa66";
-          ctx.fillRect(dx - 3, lMid - 2, 6, 2);
-          ctx.fillRect(dx - 3, lMid + 1, 6, 1);
+          // Small orange square
+          ctx.fillStyle = d.hit ? "#55ff55" : d.missed ? "#442200" : "#ff6600";
+          ctx.fillRect(dx - 3, lMid - 3, 6, 6);
         } else {
-          // Blue tall rect with center bar (shield symbol)
-          ctx.fillStyle = d.hit ? "#7777ff" : d.missed ? "#0a0a22" : "#2255ff";
-          ctx.fillRect(dx - 4, lMid - 6, 8, 12);
-          ctx.fillStyle = d.hit ? "#000033" : "#88aaff";
-          ctx.fillRect(dx - 1, lMid - 4, 2, 7);
+          // Slightly taller blue rect (visually distinct from punch)
+          ctx.fillStyle = d.hit ? "#88aaff" : d.missed ? "#0a0a22" : "#3366ff";
+          ctx.fillRect(dx - 2, lMid - 5, 5, 9);
         }
         ctx.restore();
       }
+    }
+
+    // Strength meters drawn on canvas directly below the lane
+    if (boss) {
+      var bY = lBot + 4;   // Shogun bar top
+      var pY = bY + 8;     // Player bar top
+      var bH = 4;          // bar height
+      var bX = 2;
+      var bW = W - 4;
+
+      // Shogun HP (red, drains left)
+      ctx.fillStyle = "#1a0505";
+      ctx.fillRect(bX, bY, bW, bH);
+      var bFill = Math.round(clamp(boss.hp / BOSS_HP, 0, 1) * bW);
+      ctx.fillStyle = "#cc2222";
+      ctx.fillRect(bX, bY, bFill, bH);
+      ctx.fillStyle = "#ff6666";
+      ctx.fillRect(bX, bY, bFill, 1);           // highlight top edge
+
+      // Player strength (green, drains right)
+      ctx.fillStyle = "#050f05";
+      ctx.fillRect(bX, pY, bW, bH);
+      var pFill = Math.round(clamp(strength / START_STRENGTH, 0, 1) * bW);
+      var pCol = strength < 30 ? "#dd4422" : "#22aa44";
+      ctx.fillStyle = pCol;
+      ctx.fillRect(bX, pY, pFill, bH);
+      ctx.fillStyle = strength < 30 ? "#ff8866" : "#44ff88";
+      ctx.fillRect(bX, pY, pFill, 1);           // highlight top edge
     }
   }
 
@@ -906,15 +941,14 @@
     if (actEl) actEl.textContent = inBoss ? "FINAL" : actName(displayAct);
     levelEl.textContent = inBoss ? "BOSS" : displayLevel;
 
-    var pct = clamp(strength, 0, 100);
-    fillEl.style.width = pct + "%";
-    if (pct < 30) fillEl.classList.add("low"); else fillEl.classList.remove("low");
+    // In boss mode the bars are drawn on canvas; hide the HTML versions
+    if (strengthWrap) strengthWrap.style.display = inBoss ? "none" : "";
+    if (bossHud)      bossHud.style.display      = "none";
 
-    if (bossHud) {
-      bossHud.style.display = inBoss ? "" : "none";
-      if (inBoss && boss && bossFill) {
-        bossFill.style.width = clamp(boss.hp / BOSS_HP * 100, 0, 100) + "%";
-      }
+    if (!inBoss) {
+      var pct = clamp(strength, 0, 100);
+      fillEl.style.width = pct + "%";
+      if (pct < 30) fillEl.classList.add("low"); else fillEl.classList.remove("low");
     }
 
     if (audio.ready && (state === "playing" || state === "boss")) {
@@ -1120,6 +1154,7 @@
     actEl = document.getElementById("act");
     bossHud = document.getElementById("boss-hud");
     bossFill = document.getElementById("boss-fill");
+    strengthWrap = document.querySelector(".strength-wrap");
     muteBtn = document.getElementById("mute-btn");
     titleEl = document.getElementById("title");
     gameoverEl = document.getElementById("gameover");
