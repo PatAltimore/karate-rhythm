@@ -662,6 +662,14 @@ KR.bg = (function () {
     ctx.fillStyle = SL; ctx.fillRect(cx - 52, 24, 6, 2);
     ctx.fillStyle = SL; ctx.fillRect(cx + 46, 24, 6, 2);
 
+    // 3-D top face of header — top-lit slab visible above the front beam.
+    // Spans the full gate width (pillar-to-pillar) so it reads as the roof
+    // of the beam connecting the background left post to the foreground right post.
+    var ST = "#4a2c14"; // top-lit wood (lighter than S)
+    ctx.fillStyle = SD; ctx.fillRect(cx - 56, 18, 116, 1); // far/back edge (darkest)
+    ctx.fillStyle = ST; ctx.fillRect(cx - 56, 19, 116, 5); // top surface (top-lit)
+    ctx.fillStyle = SL; ctx.fillRect(cx - 56, 23, 116, 1); // near/front edge highlight
+
     // Bracket corbels where posts meet beam
     ctx.fillStyle = SD;
     ctx.fillRect(cx - 42, 40, 12, 4);  // left — horizontal
@@ -756,6 +764,15 @@ KR.bg = (function () {
     // Gold keystone at the crown
     ctx.fillStyle = G;  ctx.fillRect(cx - 6, 48, 12, 4);
     ctx.fillStyle = SL; ctx.fillRect(cx - 8, 46, 16, 3);
+
+    // 3-D entablature slab above the arch — flat stone cap spanning both columns.
+    // The top surface shows the gate has depth connecting the background left
+    // column to the foreground right column.
+    var capL = cx - archR - SW - 2, capW = (archR + SW + 2) * 2;
+    ctx.fillStyle = SD; ctx.fillRect(capL, 40, capW, 1);  // far/back edge
+    ctx.fillStyle = SL; ctx.fillRect(capL, 41, capW, 5);  // top surface (top-lit stone)
+    ctx.fillStyle = S;  ctx.fillRect(capL, 45, capW, 1);  // near/front edge
+    ctx.fillStyle = G;  ctx.fillRect(cx - 8, 41, 16, 3);  // gold cap over keystone
   }
 
   // ---- Gate dispatcher: background layer (arch header + FAR/LEFT pillar) -
@@ -884,6 +901,13 @@ KR.bg = (function () {
     ctx.fillStyle = VL; ctx.fillRect(cx - 46, top, 92, 1);
     ctx.fillStyle = V;  ctx.fillRect(cx - 49, top - 2, 4, 9);
     ctx.fillRect(cx + 45, top - 2, 4, 9);
+
+    // 3-D top face of kasagi — top-lit slab spanning both upswept ends.
+    // Wider than the front face so it reads as a roof cap from back to front.
+    var VT = "#d96545"; // top-lit vermilion (lighter than V)
+    ctx.fillStyle = K;  ctx.fillRect(cx - 54, top - 9, 108, 1); // far/back edge
+    ctx.fillStyle = VT; ctx.fillRect(cx - 54, top - 8, 108, 6); // top surface
+    ctx.fillStyle = VL; ctx.fillRect(cx - 54, top - 2, 108, 1); // near edge highlight
 
     // gakuzuka (centre plaque)
     ctx.fillStyle = VD; ctx.fillRect(cx - 5, top + 9, 10, 8);
