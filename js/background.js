@@ -342,7 +342,284 @@ KR.bg = (function () {
     }
   }
 
-  function draw(ctx, scroll) {
+  // ===========================================================================
+  // ACT 2 — Shogun Barracks: interior corridor, long windows facing outside
+  // ===========================================================================
+  function barracksScene(ctx, scroll, t) {
+    var CEIL = 28;
+
+    // ---- Ceiling — dark timber ------------------------------------------
+    ctx.fillStyle = "#110d09";
+    ctx.fillRect(0, 0, WIDTH, CEIL);
+    // Cross-beams (parallax 0.14, nearly static overhead)
+    var bsp = 48, boff = scroll * 0.14;
+    var bf = Math.floor(boff / bsp) - 1, bl = Math.ceil((boff + WIDTH) / bsp) + 1;
+    for (var bi = bf; bi <= bl; bi++) {
+      var bx = Math.round(bi * bsp - boff);
+      ctx.fillStyle = "#0b0807"; ctx.fillRect(bx, 0, 11, CEIL);
+      ctx.fillStyle = "#1e140c"; ctx.fillRect(bx, 0, 2, CEIL); // lit edge
+    }
+    // Ceiling-wall join moulding
+    ctx.fillStyle = "#0e0a07"; ctx.fillRect(0, CEIL, WIDTH, 3);
+
+    // ---- Back wall — stained timber panels -------------------------------
+    ctx.fillStyle = "#1a1210";
+    ctx.fillRect(0, CEIL + 3, WIDTH, GROUND_Y - CEIL - 3);
+
+    // ---- Tall windows (parallax 0.30) -----------------------------------
+    // Each window sits in the back wall; through it you see the night outside.
+    var wsp = 96, woff = scroll * 0.30;
+    var wf = Math.floor(woff / wsp) - 1, wl = Math.ceil((woff + WIDTH) / wsp) + 1;
+    var wTop = 40, wBot = 124, wW = 46;
+    for (var wi = wf; wi <= wl; wi++) {
+      var wx = Math.round(wi * wsp - woff + 48); // centred in each 96px bay
+      // Outside sky — cold indigo night
+      ctx.fillStyle = "#0e1224"; ctx.fillRect(wx, wTop, wW, wBot - wTop);
+      // Mountain silhouette in lower half of window
+      var mbase = Math.round(wTop + (wBot - wTop) * 0.55);
+      ctx.fillStyle = "#090c18"; ctx.fillRect(wx, mbase, wW, wBot - mbase);
+      // Jagged peak line across mountain silhouette
+      ctx.fillStyle = "#090c18";
+      ctx.beginPath(); ctx.moveTo(wx, mbase);
+      for (var mp = 0; mp <= wW; mp += 7) {
+        ctx.lineTo(wx + mp, mbase - Math.round(hash(wi * 5 + mp, 41) * 10 + 2));
+      }
+      ctx.lineTo(wx + wW, mbase); ctx.closePath(); ctx.fill();
+      // Pale moonlight tint over the window pane
+      ctx.fillStyle = "rgba(80,100,170,0.07)"; ctx.fillRect(wx, wTop, wW, wBot - wTop);
+      // Heavy timber frame
+      ctx.fillStyle = "#0b0806";
+      ctx.fillRect(wx - 4, wTop - 3, wW + 8, 4);               // top
+      ctx.fillRect(wx - 4, wBot, wW + 8, 4);                   // bottom
+      ctx.fillRect(wx - 4, wTop - 3, 4, wBot - wTop + 7);      // left jamb
+      ctx.fillRect(wx + wW, wTop - 3, 4, wBot - wTop + 7);     // right jamb
+      // Horizontal mid-rail (two-pane style)
+      ctx.fillRect(wx - 4, wTop + Math.round((wBot - wTop) * 0.44), wW + 8, 3);
+      // Cold moonlight spill on floor directly below window
+      ctx.fillStyle = "rgba(65,85,155,0.10)";
+      ctx.fillRect(wx, GROUND_Y, wW, 20);
+    }
+
+    // ---- Wooden pillars between windows (same parallax, interval start) -
+    for (var pi = wf; pi <= wl; pi++) {
+      var px = Math.round(pi * wsp - woff);
+      ctx.fillStyle = "#281a0e"; ctx.fillRect(px - 8, CEIL + 3, 16, GROUND_Y - CEIL - 3);
+      ctx.fillStyle = "#3c2618"; ctx.fillRect(px - 8, CEIL + 3, 2, GROUND_Y - CEIL - 3); // highlight
+      ctx.fillStyle = "#160c06"; ctx.fillRect(px + 5, CEIL + 3, 3, GROUND_Y - CEIL - 3); // shadow
+      // Cap / base moulding
+      ctx.fillStyle = "#160c06"; ctx.fillRect(px - 10, CEIL + 3, 20, 5);
+      ctx.fillStyle = "#160c06"; ctx.fillRect(px - 10, GROUND_Y - 5, 20, 5);
+      ctx.fillStyle = "#241608"; ctx.fillRect(px - 10, CEIL + 8, 20, 2);
+    }
+
+    // ---- Weapon racks (parallax 0.50, offset half-bay from pillars) ------
+    var roff = scroll * 0.50;
+    var rf = Math.floor(roff / wsp) - 1, rl = Math.ceil((roff + WIDTH) / wsp) + 1;
+    for (var ri = rf; ri <= rl; ri++) {
+      var rx = Math.round(ri * wsp - roff + 68);
+      ctx.fillStyle = "#382410"; ctx.fillRect(rx - 14, 62, 28, 3); // upper rail
+      ctx.fillStyle = "#382410"; ctx.fillRect(rx - 14, 88, 28, 3); // lower rail
+      for (var wri = 0; wri < 4; wri++) {
+        var wrx = rx - 12 + wri * 8;
+        ctx.fillStyle = "#46340e"; ctx.fillRect(wrx, 38, 1, 86); // pole shaft
+        // Spearhead / blade tip
+        ctx.fillStyle = "#8892a2"; ctx.fillRect(wrx - 1, 34, 3, 6);
+        ctx.fillStyle = "#60686e"; ctx.fillRect(wrx, 34, 1, 5);
+      }
+    }
+
+    // ---- Hanging paper lanterns (parallax 0.60) --------------------------
+    var llsp = 64, lloff = scroll * 0.60;
+    var lf = Math.floor(lloff / llsp) - 1, ll = Math.ceil((lloff + WIDTH) / llsp) + 1;
+    var flicker = 0.5 + 0.5 * Math.abs(Math.sin(t * 5.3));
+    for (var li = lf; li <= ll; li++) {
+      var lx = Math.round(li * llsp - lloff + 32);
+      ctx.fillStyle = "#261a0c"; ctx.fillRect(lx, 0, 1, 10);         // cord
+      ctx.fillStyle = "#7a2016"; ctx.fillRect(lx - 5, 10, 10, 14);   // body
+      ctx.fillStyle = "#cc4818"; ctx.fillRect(lx - 4, 11, 8, 12);    // lit face
+      ctx.fillStyle = "#ffbe50"; ctx.fillRect(lx - 2, 13, 4, Math.round(5 + flicker * 2)); // flame
+      ctx.fillStyle = "#0e0806"; ctx.fillRect(lx - 6, 10, 12, 3);    // top cap
+      ctx.fillStyle = "#0e0806"; ctx.fillRect(lx - 6, 21, 12, 3);    // bottom cap
+      // Warm amber glow on ceiling
+      var lg = ctx.createRadialGradient(lx, 18, 3, lx, 18, 26);
+      lg.addColorStop(0, "rgba(200,100,36,0.14)");
+      lg.addColorStop(1, "rgba(200,100,36,0)");
+      ctx.fillStyle = lg; ctx.fillRect(lx - 26, 0, 52, 48);
+      // Warm pool on floor
+      var fp = ctx.createRadialGradient(lx, GROUND_Y + 2, 2, lx, GROUND_Y + 2, 28);
+      fp.addColorStop(0, "rgba(190,85,28,0.18)");
+      fp.addColorStop(1, "rgba(190,85,28,0)");
+      ctx.fillStyle = fp; ctx.fillRect(lx - 28, GROUND_Y, 56, 30);
+    }
+
+    // ---- Wooden plank floor ---------------------------------------------
+    var fgb = ctx.createLinearGradient(0, GROUND_Y, 0, HEIGHT);
+    fgb.addColorStop(0, "#623c18"); fgb.addColorStop(1, "#281408");
+    ctx.fillStyle = fgb; ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
+    ctx.fillStyle = "#88502a"; ctx.fillRect(0, GROUND_Y, WIDTH, 1); // sunlit front edge
+    var fpsp = 9, fpoff = Math.round(scroll) % fpsp;
+    ctx.fillStyle = "#382010";
+    for (var fpx = -fpoff; fpx < WIDTH; fpx += fpsp)
+      ctx.fillRect(fpx, GROUND_Y, 1, HEIGHT - GROUND_Y);
+    ctx.fillStyle = "#724828"; ctx.fillRect(0, GROUND_Y + 3, WIDTH, 1); // grain stripe
+  }
+
+  // ===========================================================================
+  // ACT 3 — Palace & Dungeon: stone corridors leading to the princess's cell
+  // ===========================================================================
+  function palaceScene(ctx, scroll, t) {
+    // ---- Vaulted stone ceiling -------------------------------------------
+    ctx.fillStyle = "#0c0a16";
+    ctx.fillRect(0, 0, WIDTH, 36);
+    // Arch ribs (parallax 0.10, nearly static)
+    var arsp = 88, aroff = scroll * 0.10;
+    var arf = Math.floor(aroff / arsp) - 1, arl = Math.ceil((aroff + WIDTH) / arsp) + 1;
+    for (var ari = arf; ari <= arl; ari++) {
+      var arx = Math.round(ari * arsp - aroff + 44);
+      ctx.fillStyle = "#18142a"; ctx.fillRect(arx - 4, 0, 8, 36);
+      ctx.fillStyle = "#22203e"; ctx.fillRect(arx - 4, 0, 1, 36); // lit edge
+    }
+
+    // ---- Stone block wall (parallax 0.15) --------------------------------
+    ctx.fillStyle = "#13102a";
+    ctx.fillRect(0, 36, WIDTH, GROUND_Y - 36);
+    var soff = scroll * 0.15;
+    for (var srow = 0; srow < 8; srow++) {
+      var sy = 36 + srow * 14;
+      var sShift = srow % 2 === 0 ? 0 : 16;
+      var sFirst = Math.floor((soff - sShift) / 32) - 1;
+      var sLast  = Math.ceil((soff - sShift + WIDTH) / 32) + 1;
+      ctx.fillStyle = "#1c1832";
+      for (var sc = sFirst; sc <= sLast; sc++) {
+        var ssx = Math.round(sc * 32 - soff + sShift);
+        ctx.fillRect(ssx, sy, 30, 12); // stone block face
+      }
+      // Mortar line between rows
+      ctx.fillStyle = "#0e0c1e";
+      ctx.fillRect(0, sy + 12, WIDTH, 2);
+    }
+
+    // ---- Round-arch windows near ceiling (parallax 0.28) ----------------
+    var mwsp = 110, mwoff = scroll * 0.28;
+    var mwf = Math.floor(mwoff / mwsp) - 1, mwl = Math.ceil((mwoff + WIDTH) / mwsp) + 1;
+    for (var mwi = mwf; mwi <= mwl; mwi++) {
+      var mwx = Math.round(mwi * mwsp - mwoff + 55);
+      var mwy = 46, mwW = 22, mwH = 32;
+      // Blood sky through the arch
+      ctx.fillStyle = "#180e1c"; ctx.fillRect(mwx - 11, mwy, mwW, mwH);
+      // Blood moon, gently pulsing
+      var moonR = 5 + Math.round(Math.abs(Math.sin(t * 0.9 + mwi * 1.4)));
+      var mgg = ctx.createRadialGradient(mwx, mwy + 9, 1, mwx, mwy + 9, moonR * 3);
+      mgg.addColorStop(0, "rgba(200,65,50,0.40)"); mgg.addColorStop(1, "rgba(130,28,28,0)");
+      ctx.fillStyle = mgg; ctx.beginPath(); ctx.arc(mwx, mwy + 9, moonR * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#b43a2e";
+      ctx.beginPath(); ctx.arc(mwx, mwy + 9, moonR, 0, Math.PI * 2); ctx.fill();
+      // Stone arch surround
+      ctx.fillStyle = "#0a0818";
+      ctx.fillRect(mwx - 14, mwy - 3, mwW + 3, 4);          // top lintel
+      ctx.fillRect(mwx - 14, mwy + mwH, mwW + 3, 4);        // sill
+      ctx.fillRect(mwx - 14, mwy - 3, 4, mwH + 7);          // left jamb
+      ctx.fillRect(mwx + 9,  mwy - 3, 4, mwH + 7);          // right jamb
+    }
+
+    // ---- Ornate stone columns (same parallax as windows, at interval start)
+    for (var coi = mwf; coi <= mwl; coi++) {
+      var cox = Math.round(coi * mwsp - mwoff);
+      ctx.fillStyle = "#1e1a30"; ctx.fillRect(cox - 9, 36, 18, GROUND_Y - 36); // shaft
+      ctx.fillStyle = "#2c2844"; ctx.fillRect(cox - 9, 36, 2, GROUND_Y - 36);  // lit edge
+      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox + 6, 36, 3, GROUND_Y - 36);  // shadow
+      // Capital with gold band
+      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox - 12, 36, 24, 6);
+      ctx.fillStyle = "#c49430"; ctx.fillRect(cox - 10, 37, 20, 2);
+      // Base with gold band
+      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox - 12, GROUND_Y - 8, 24, 8);
+      ctx.fillStyle = "#c49430"; ctx.fillRect(cox - 10, GROUND_Y - 7, 20, 1);
+    }
+
+    // ---- Crimson silk banners between columns (parallax 0.40) -----------
+    var bnsp = 110, bnoff = scroll * 0.40;
+    var bnf = Math.floor(bnoff / bnsp) - 1, bnl = Math.ceil((bnoff + WIDTH) / bnsp) + 1;
+    for (var bni = bnf; bni <= bnl; bni++) {
+      var bnx = Math.round(bni * bnsp - bnoff + 55);
+      var bnTop = 36, bnH = 84, bnW = 28;
+      // Drop shadow
+      ctx.fillStyle = "#0e0c1a"; ctx.fillRect(bnx - 13, bnTop + 2, bnW, bnH);
+      // Banner cloth
+      ctx.fillStyle = "#641418"; ctx.fillRect(bnx - 14, bnTop, bnW, bnH);
+      ctx.fillStyle = "#8c2422"; ctx.fillRect(bnx - 14, bnTop, 2, bnH);      // highlight edge
+      ctx.fillStyle = "#480c10"; ctx.fillRect(bnx + 12, bnTop, 2, bnH);     // shadow edge
+      // Gold hanging rod
+      ctx.fillStyle = "#c49430"; ctx.fillRect(bnx - 16, bnTop, bnW + 4, 3);
+      // Gold mon / clan crest on banner
+      ctx.fillStyle = "#c49430";
+      ctx.fillRect(bnx - 4, bnTop + 15, 8, 1);  // top bar ─
+      ctx.fillRect(bnx - 4, bnTop + 22, 8, 1);  // mid bar ─
+      ctx.fillRect(bnx - 1, bnTop + 11, 2, 15); // vert. stroke │
+      ctx.fillRect(bnx - 3, bnTop + 32, 6, 1);
+      ctx.fillRect(bnx - 4, bnTop + 38, 8, 1);
+      ctx.fillRect(bnx - 3, bnTop + 44, 6, 1);
+      // Fringe at bottom
+      ctx.fillStyle = "#c49430";
+      for (var fri = 0; fri < 6; fri++)
+        ctx.fillRect(bnx - 13 + fri * 4, bnTop + bnH, 1, 6);
+    }
+
+    // ---- Iron-bar dungeon grilles on lower wall (parallax 0.18) ---------
+    // Alternating bays show barred cells — you are running past the dungeon.
+    var grsp = 110, groff = scroll * 0.18;
+    var grf = Math.floor(groff / grsp) - 1, grl = Math.ceil((groff + WIDTH) / grsp) + 1;
+    for (var gri = grf; gri <= grl; gri++) {
+      if (gri % 2 === 0) continue; // every other bay
+      var grx = Math.round(gri * grsp - groff + 20);
+      var grTop = 88, grBot = GROUND_Y - 2, grW = 50;
+      // Dark cell interior behind the bars
+      ctx.fillStyle = "#080610"; ctx.fillRect(grx - grW / 2, grTop, grW, grBot - grTop);
+      // Vertical bars
+      for (var bari = 0; bari <= 4; bari++) {
+        var barx = Math.round(grx - grW / 2 + bari * (grW / 4));
+        ctx.fillStyle = "#181628"; ctx.fillRect(barx - 2, grTop, 4, grBot - grTop);
+        ctx.fillStyle = "#26243c"; ctx.fillRect(barx - 2, grTop, 1, grBot - grTop); // gleam
+      }
+      // Horizontal crossbar mid-height
+      ctx.fillStyle = "#181628";
+      ctx.fillRect(grx - grW / 2, Math.round(grTop + (grBot - grTop) * 0.5), grW, 3);
+      // Stone surround
+      ctx.fillStyle = "#0e0c1c";
+      ctx.fillRect(grx - grW / 2 - 3, grTop - 2, grW + 6, 4);
+      ctx.fillRect(grx - grW / 2 - 3, grTop - 2, 3, grBot - grTop + 4);
+      ctx.fillRect(grx + grW / 2,     grTop - 2, 3, grBot - grTop + 4);
+    }
+
+    // ---- Wall torches (parallax 0.50) ------------------------------------
+    var tsp = 110, toff = scroll * 0.50;
+    var tff = Math.floor(toff / tsp) - 1, tfl = Math.ceil((toff + WIDTH) / tsp) + 1;
+    var tflicker = 0.5 + 0.5 * Math.abs(Math.sin(t * 4.8));
+    for (var tii = tff; tii <= tfl; tii++) {
+      var tx = Math.round(tii * tsp - toff + 82);
+      bossTorch(ctx, tx, 96, tflicker);
+    }
+
+    // ---- Polished dark stone floor ---------------------------------------
+    var fgp = ctx.createLinearGradient(0, GROUND_Y, 0, HEIGHT);
+    fgp.addColorStop(0, "#262238"); fgp.addColorStop(1, "#100e1c");
+    ctx.fillStyle = fgp; ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
+    ctx.fillStyle = "#38324c"; ctx.fillRect(0, GROUND_Y, WIDTH, 1);   // polish sheen
+    // Tile grid — vertical joints
+    var tfsp = 20, tfoff = Math.round(scroll) % tfsp;
+    ctx.fillStyle = "#181428";
+    for (var tfx = -tfoff; tfx < WIDTH; tfx += tfsp)
+      ctx.fillRect(tfx, GROUND_Y, 1, HEIGHT - GROUND_Y);
+    // Horizontal grout lines
+    ctx.fillStyle = "#181428";
+    ctx.fillRect(0, GROUND_Y + 12, WIDTH, 1);
+    ctx.fillRect(0, GROUND_Y + 24, WIDTH, 1);
+    // Crimson reflection of banners on polished stone
+    ctx.fillStyle = "rgba(88,16,18,0.10)"; ctx.fillRect(0, GROUND_Y, WIDTH, 24);
+  }
+
+  function draw(ctx, scroll, act, t) {
+    if (act === 2) { barracksScene(ctx, scroll, t || 0); return; }
+    if (act === 3) { palaceScene(ctx, scroll, t || 0); return; }
     sky(ctx);
     ridge(ctx, scroll, 0.08, 100, 22, 60, "#6a5d85", 11);  // hazy far range
     fujiLayer(ctx, scroll);                                // Mount Fuji

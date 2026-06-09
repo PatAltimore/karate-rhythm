@@ -827,7 +827,7 @@
     } else if (state === "boss" || state === "victory") {
       bossRender();
     } else {
-      BG.draw(ctx, scrollX);
+      BG.draw(ctx, scrollX, runAct, elapsed);
       // torii gates sit between the scenery and the fighters, so the hero runs
       // through them (framed by the pillars, the lintel passing overhead).
       for (var gi = 0; gi < gates.length; gi++) BG.torii(ctx, gates[gi].screenX, GROUND_Y);
