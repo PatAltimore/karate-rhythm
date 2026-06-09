@@ -1010,36 +1010,111 @@ KR.bg = (function () {
       var hx = -12 + Math.min(1, t / 2.2) * 72;                // hero strides in
       SP.fighter(ctx, hx, gy, { facing: 1, pose: t < 2.2 ? "run" : "idle", phase: t * 1.6 });
     } else if (scene === "cliff") {
-      // Hero scales a sheer cliff face to reach the palace road above.
-      // Left strip: dusk sky + bridge ledge the hero is climbing up to.
-      // Right: dark rock face.
+      // Hero crests the clifftop and steps onto the palace approach road.
+      // Full dusk sky + mountain panorama fill the background; the Act-1
+      // wooden bridge road stretches to the right with the palace ahead.
+      // The rocky ledge at the left edge shows the sheer height climbed.
+
+      var edgeX = 46; // x where rocky cliff top meets the wooden bridge
+
+      // Dusk sky across the full frame
       cutSky(ctx, "dusk");
-      var cEdge = 66;
-      // cliff face (fills right side of screen)
-      ctx.fillStyle = "#1c1530";
-      ctx.fillRect(cEdge, 0, WIDTH - cEdge, HEIGHT);
-      // rocky strata texture
-      ctx.fillStyle = "#2a2046";
-      var strata = [7, 24, 40, 57, 74, 91, 108, 124, 140];
-      for (var si = 0; si < strata.length; si++) {
-        ctx.fillRect(cEdge + 6 + (si % 3) * 12, strata[si], 18 + (si * 11) % 36, 1);
-      }
-      ctx.fillStyle = "#342d54"; // lighter highlight stripe mid-cliff
-      ctx.fillRect(cEdge + 22, 30, 10, HEIGHT - 30);
-      ctx.fillStyle = "#0e0b1a"; // deep shadow crack at the edge
-      ctx.fillRect(cEdge - 3, 0, 4, HEIGHT);
-      // Bridge platform ledge at the top left (where the hero arrives)
-      ctx.fillStyle = "#7a5630";
-      ctx.fillRect(0, gy, cEdge - 2, 12);
+
+      // Mountain panorama — static, hero has arrived and paused
+      ridge(ctx, 0, 0, 100, 24, 54, "#3b2a55", 0);   // hazy far range
+      ridge(ctx, 0, 0, 126, 18, 38, "#271e3c", 40);   // near range
+
+      // Palace in the far distance — the goal, just visible ahead on the right
+      cutCastle(ctx, 222, 134, 1.8);
+
+      // ---- Bridge road from edgeX across the screen ----------------------
+      var bdg = ctx.createLinearGradient(0, gy, 0, gy + 12);
+      bdg.addColorStop(0, "#7a5630"); bdg.addColorStop(1, "#553b20");
+      ctx.fillStyle = bdg;
+      ctx.fillRect(edgeX, gy, WIDTH - edgeX, 12);
       ctx.fillStyle = "#a8763e";
-      ctx.fillRect(0, gy, cEdge - 2, 1);
-      for (var cpx = -2; cpx < cEdge; cpx += 11)
-        ctx.fillRect(Math.round(cpx), gy, 1, 12);
-      // Hero climbs from below the screen up to platform height
-      var climbFrac = Math.min(1, t / 3.8);
-      var climbEase = 1 - (1 - climbFrac) * (1 - climbFrac); // ease-out
-      var hcy = Math.round(HEIGHT + 14 - (HEIGHT + 14 - gy) * climbEase);
-      SP.fighter(ctx, cEdge - 10, hcy, { facing: 1, pose: "run", phase: t * 2.4 });
+      ctx.fillRect(edgeX, gy, WIDTH - edgeX, 1); // sunlit top edge
+      // Plank seams + grain highlights
+      for (var bpx = edgeX; bpx < WIDTH; bpx += 11) {
+        ctx.fillStyle = "#3a2814"; ctx.fillRect(bpx, gy, 1, 12);
+        ctx.fillStyle = "#8a6236"; ctx.fillRect(bpx + 2, gy + 2, 1, 9);
+      }
+      // Front support beam
+      ctx.fillStyle = "#2e1f12";
+      ctx.fillRect(edgeX, gy + 12, WIDTH - edgeX, 5);
+
+      // River below the bridge — shows this is the same road from Act 1
+      var rwg = ctx.createLinearGradient(0, gy + 17, 0, HEIGHT);
+      rwg.addColorStop(0.0, "#6e5566");
+      rwg.addColorStop(0.4, "#3c4866");
+      rwg.addColorStop(1.0, "#1b2742");
+      ctx.fillStyle = rwg;
+      ctx.fillRect(edgeX, gy + 17, WIDTH - edgeX, HEIGHT - gy - 17);
+      ctx.fillStyle = "#b89080"; // water surface sheen
+      ctx.fillRect(edgeX, gy + 17, WIDTH - edgeX, 1);
+      // Ripples + sunset glint on the water
+      ctx.fillStyle = "#8a6f78";
+      ctx.fillRect(edgeX + 12, gy + 22, 28, 1);
+      ctx.fillRect(edgeX + 68, gy + 28, 22, 1);
+      ctx.fillRect(edgeX + 128, gy + 24, 30, 1);
+      ctx.fillStyle = "rgba(255,200,140,0.18)";
+      for (var wy = gy + 19; wy < HEIGHT; wy += 3) {
+        var ww = 8 + (wy % 5);
+        ctx.fillRect(Math.round(164 + Math.sin(wy * 1.2) * 7 - ww / 2), wy, ww, 1);
+      }
+
+      // ---- Cliff face below the rocky ledge (left side) ------------------
+      // Dark rock face visible below edgeX — conveys the sheer height climbed.
+      var cfg = ctx.createLinearGradient(0, gy + 4, 0, HEIGHT);
+      cfg.addColorStop(0, "#1c1830"); cfg.addColorStop(1, "#0a0814");
+      ctx.fillStyle = cfg;
+      ctx.fillRect(0, gy + 4, edgeX - 2, HEIGHT - gy - 4);
+      // Horizontal rock strata lines
+      ctx.fillStyle = "#2a264a";
+      var strs = [gy + 10, gy + 20, gy + 33, gy + 48, gy + 65];
+      for (var si = 0; si < strs.length; si++) {
+        ctx.fillRect(5 + (si % 3) * 9, strs[si], 10 + (si * 7) % 18, 1);
+      }
+      // Vertical crack running down the face
+      ctx.fillStyle = "#100e20";
+      ctx.fillRect(edgeX - 14, gy + 4, 2, HEIGHT - gy - 4);
+
+      // ---- Rocky cliff-top ledge surface (left of edgeX) ----------------
+      // Rough purple-grey stone where the hero hauls themselves over the lip.
+      ctx.fillStyle = "#2c2448";
+      ctx.fillRect(0, gy - 3, edgeX + 2, 7);    // ledge slab
+      ctx.fillStyle = "#3e3460";
+      ctx.fillRect(0, gy - 3, edgeX + 2, 1);    // dusk-lit top face
+      ctx.fillStyle = "#1a1630";
+      ctx.fillRect(0, gy + 4, edgeX - 2, 2);    // shadow under the lip
+      // Small surface chips for texture
+      ctx.fillStyle = "#4a4070";
+      ctx.fillRect(9, gy - 2, 5, 1);
+      ctx.fillRect(22, gy - 1, 7, 1);
+      ctx.fillRect(35, gy - 2, 4, 1);
+
+      // Thin shadow where cliff edge meets bridge — depth transition
+      ctx.fillStyle = "rgba(0,0,0,0.36)";
+      ctx.fillRect(edgeX - 3, 0, 5, HEIGHT);
+
+      // ---- Hero animation ------------------------------------------------
+      // Phase 1 (t < ARRIVE): hero rises up over the rocky ledge, pulling in
+      //   from below the cliff edge at the left.
+      // Phase 2 (t >= ARRIVE): hero strides forward along the bridge road.
+      var ARRIVE = 2.5;
+      if (t < ARRIVE) {
+        var cf = t / ARRIVE;
+        var ce = 1 - (1 - cf) * (1 - cf); // ease-out
+        // Rises from 34 px below ground up through the ledge, arrives at gy
+        var hcy = Math.round(gy + 34 - 36 * ce);
+        SP.fighter(ctx, edgeX - 6, hcy, { facing: 1, pose: "run", phase: t * 2.8 });
+      } else {
+        // Now on the bridge, striding toward the palace
+        var wp = Math.min(1, (t - ARRIVE) / 1.6);
+        var we = wp * (2 - wp); // ease-out
+        SP.fighter(ctx, Math.round(edgeX + 4 + we * 52), gy,
+                   { facing: 1, pose: "run", phase: t * 1.6 });
+      }
     } else if (scene === "dawn") {
       cutSky(ctx, "dawn");
       cutMoon(ctx, 150, 150 - Math.min(1, t / 2.6) * 92, 18, true); // sun rises
