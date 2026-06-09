@@ -796,7 +796,8 @@
     S.fighter(ctx, e.x, dead ? e.y : e.y + off, {
       facing: -1,
       pose: dead ? "hit" : (e.leaping ? "kick" : "run"),
-      phase: e.runPhase, kit: e.kit, rot: e.rot, rank: e.rank
+      phase: e.leaping ? 0.47 : e.runPhase, // leaping guards show mid-extension
+      kit: e.kit, rot: e.rot, rank: e.rank
     });
   }
 
@@ -827,15 +828,17 @@
       ctx.restore();
       return;
     }
-    var yOff = 0, pose = "run";
+    var yOff = 0, pose = "run", kickPhase = 0;
     if (player.kicking) {
       pose = "kick";
-      var kp = player.kickT / KICK_DURATION;
-      yOff = -Math.sin(kp * Math.PI) * JUMP_HEIGHT;
+      kickPhase = player.kickT / KICK_DURATION;
+      yOff = -Math.sin(kickPhase * Math.PI) * JUMP_HEIGHT;
     }
     S.shadow(ctx, PLAYER_X, GROUND_Y, 16, 0.28 * (1 - (-yOff) / JUMP_HEIGHT * 0.7));
     S.fighter(ctx, PLAYER_X, GROUND_Y + yOff, {
-      facing: 1, pose: pose, phase: player.runPhase, kit: PLAYER_KIT
+      facing: 1, pose: pose,
+      phase: player.kicking ? kickPhase : player.runPhase,
+      kit: PLAYER_KIT
     });
   }
 

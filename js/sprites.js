@@ -45,68 +45,118 @@ KR.sprites = (function () {
   }
 
   // ---- Poses (all face +x; feet at origin) -----------------------------
-  function drawRun(ctx, k, phase) {
-    var frameB = phase % 1 >= 0.5;
 
-    // legs first (behind torso)
-    if (!frameB) {
-      // open stride: front leg forward, back leg back
-      r(ctx, 2, -9, 3, 9, k.gi);  r(ctx, 3, -2, 5, 2, PAL.black); // front
-      r(ctx, -4, -9, 3, 7, k.giSh); r(ctx, -6, -2, 5, 2, PAL.black); // back
+  // 4-frame run cycle.  frame 0 = stride-A, 1 = float-A, 2 = stride-B, 3 = float-B.
+  // Float frames lift the whole body 1 px; arms swing dramatically counter to legs.
+  function drawRun(ctx, k, phase) {
+    var f = ((phase % 1) + 1) % 1;       // 0..1, always positive
+    var frame = Math.floor(f * 4);        // 0-3
+    var isFloat = (frame === 1 || frame === 3);
+    if (isFloat) { ctx.save(); ctx.translate(0, -1); } // body rises on float frames
+
+    // LEGS — drawn first, behind torso
+    if (frame === 0) {
+      // Stride-A: right leg forward, left leg trailing
+      r(ctx, 2,  -10, 3, 10, k.gi);    r(ctx, 3,  -2, 5, 2, PAL.black);
+      r(ctx, -5,  -8, 3,  6, k.giSh);  r(ctx, -6, -2, 4, 2, PAL.black);
+    } else if (frame === 1) {
+      // Float-A: left support, right knee rising
+      r(ctx, -1, -10, 3, 10, k.gi);    r(ctx, -1, -2, 5, 2, PAL.black);
+      r(ctx,  3, -10, 3,  5, k.giSh);  // raised thigh
+      r(ctx,  5,  -6, 3,  4, k.giSh);  // shin folded back
+      r(ctx,  5,  -3, 4,  2, PAL.black);
+    } else if (frame === 2) {
+      // Stride-B: left leg forward, right leg trailing (subtle position shift)
+      r(ctx,  3, -10, 3, 10, k.gi);    r(ctx,  2, -2, 5, 2, PAL.black);
+      r(ctx, -4,  -8, 3,  6, k.giSh);  r(ctx, -5, -2, 4, 2, PAL.black);
     } else {
-      // passing: support leg down, lead knee raised
-      r(ctx, -1, -10, 3, 10, k.gi); r(ctx, -1, -2, 5, 2, PAL.black);
-      r(ctx, 2, -9, 3, 3, k.gi); r(ctx, 3, -7, 3, 4, k.gi); r(ctx, 3, -4, 4, 2, PAL.black);
+      // Float-B: right support, left knee rising (other side)
+      r(ctx,  0, -10, 3, 10, k.gi);    r(ctx,  0, -2, 5, 2, PAL.black);
+      r(ctx, -3,  -9, 3,  4, k.giSh);  // raised thigh
+      r(ctx, -5,  -6, 2,  4, k.giSh);  // shin folded back
+      r(ctx, -6,  -3, 4,  2, PAL.black);
     }
 
-    // torso + belt + head
+    // TORSO + BELT
     r(ctx, -3, -18, 7, 9, k.gi);
     r(ctx, -3, -18, 2, 9, k.giSh);   // shaded back edge
-    r(ctx, 0, -18, 1, 6, k.giSh);    // gi seam
+    r(ctx,  0, -18, 1, 6, k.giSh);   // gi seam
     r(ctx, -3, -12, 7, 2, k.band);   // belt
-    r(ctx, -3, -25, 7, 7, k.skin);   // head
-    r(ctx, -3, -25, 7, 3, k.hair);   // hair
-    r(ctx, -3, -22, 1, 2, k.hair);   // sideburn
-    r(ctx, 2, -21, 1, 1, PAL.black); // eye
 
-    // arms swing opposite the legs
-    if (!frameB) {
-      r(ctx, 3, -17, 2, 5, k.gi);  r(ctx, 3, -12, 2, 2, k.skin);   // front low
-      r(ctx, -4, -17, 2, 4, k.giSh); r(ctx, -4, -13, 2, 2, k.skin); // back up
+    // HEAD
+    r(ctx, -3, -25, 7, 7, k.skin);
+    r(ctx, -3, -25, 7, 3, k.hair);
+    r(ctx, -3, -22, 1, 2, k.hair);   // sideburn
+    r(ctx,  2, -21, 1, 1, PAL.black);
+
+    // ARMS — dramatic counter-swing (opposite to the leading leg)
+    if (frame === 0) {
+      // A: front (right) arm LOW near hip, back (left) arm HIGH near chin
+      r(ctx,  3, -17, 2, 6, k.gi);    r(ctx,  3, -12, 2, 2, k.skin);
+      r(ctx, -5, -22, 2, 5, k.giSh);  r(ctx, -5, -18, 2, 2, k.skin);
+    } else if (frame === 1) {
+      // Transition: arms crossing through mid-level
+      r(ctx,  3, -20, 2, 5, k.gi);    r(ctx,  3, -15, 2, 2, k.skin);
+      r(ctx, -4, -19, 2, 4, k.giSh);  r(ctx, -4, -16, 2, 2, k.skin);
+    } else if (frame === 2) {
+      // B: front (right) arm HIGH near chin, back (left) arm LOW near hip
+      r(ctx,  3, -22, 2, 5, k.gi);    r(ctx,  3, -18, 2, 2, k.skin);
+      r(ctx, -4, -17, 2, 6, k.giSh);  r(ctx, -4, -12, 2, 2, k.skin);
     } else {
-      r(ctx, 3, -18, 2, 4, k.gi);  r(ctx, 3, -14, 2, 2, k.skin);   // front up
-      r(ctx, -4, -17, 2, 5, k.giSh); r(ctx, -4, -12, 2, 2, k.skin); // back low
+      // Transition (other side)
+      r(ctx,  3, -19, 2, 4, k.gi);    r(ctx,  3, -16, 2, 2, k.skin);
+      r(ctx, -5, -20, 2, 5, k.giSh);  r(ctx, -5, -16, 2, 2, k.skin);
     }
+
+    if (isFloat) ctx.restore();
   }
 
-  function drawKick(ctx, k) {
-    // support leg tucked under, pointing down-back
-    r(ctx, -3, -10, 3, 4, k.giSh);
-    r(ctx, -5, -7, 3, 5, k.giSh);
-    r(ctx, -6, -3, 4, 2, PAL.black);
+  // 3-phase kick:  0..0.30 = chamber, 0.30..0.65 = extension, 0.65..1 = retract.
+  function drawKick(ctx, k, phase) {
+    phase = phase || 0;
 
-    // torso reclined slightly back
-    r(ctx, -4, -17, 7, 9, k.gi);
-    r(ctx, -4, -17, 2, 9, k.giSh);
-    r(ctx, -4, -11, 7, 2, k.band);    // belt
+    if (phase < 0.30) {
+      // CHAMBER: knee cocked high, body loaded, arms pulled back for power
+      r(ctx, -3, -10, 3, 10, k.giSh);  r(ctx, -5, -2, 5, 2, PAL.black); // support
+      r(ctx,  1, -13, 3,  6, k.gi);    // raised thigh
+      r(ctx,  3,  -8, 4,  5, k.gi);    // shin folded under
+      r(ctx,  4,  -4, 4,  2, PAL.black);
+      r(ctx, -3, -18, 7,  9, k.gi);    r(ctx, -3, -18, 2, 9, k.giSh);
+      r(ctx, -3, -12, 7,  2, k.band);
+      r(ctx, -3, -25, 7,  7, k.skin);  r(ctx, -3, -25, 7, 3, k.hair);
+      r(ctx,  2, -21, 1,  1, PAL.black);
+      r(ctx,  2, -19, 2,  4, k.gi);    r(ctx,  2, -16, 2, 2, k.skin);   // arms chambered
+      r(ctx, -4, -20, 2,  5, k.giSh);  r(ctx, -4, -16, 2, 2, k.skin);
 
-    // head
-    r(ctx, -4, -24, 7, 7, k.skin);
-    r(ctx, -4, -24, 7, 3, k.hair);
-    r(ctx, 1, -20, 1, 1, PAL.black);
+    } else if (phase < 0.65) {
+      // EXTENSION: full kick — torso reclined, leg thrust
+      r(ctx, -3, -10, 3, 4, k.giSh);
+      r(ctx, -5,  -7, 3, 5, k.giSh);
+      r(ctx, -6,  -3, 4, 2, PAL.black);
+      r(ctx, -4, -17, 7, 9, k.gi);     r(ctx, -4, -17, 2, 9, k.giSh);
+      r(ctx, -4, -11, 7, 2, k.band);
+      r(ctx, -4, -24, 7, 7, k.skin);   r(ctx, -4, -24, 7, 3, k.hair);
+      r(ctx,  1, -20, 1, 1, PAL.black);
+      r(ctx,  0, -11, 11, 3, k.gi);    r(ctx,  0, -11, 11, 1, k.giSh);
+      r(ctx, 10, -12,  5, 3, PAL.black);
+      r(ctx,  0, -16,  4, 2, k.gi);    r(ctx,  4, -16, 2, 2, k.skin);
+      r(ctx, -6, -15,  3, 2, k.giSh);  r(ctx, -7, -15, 2, 2, k.skin);
+      r(ctx,  6, -16,  6, 1, k.giSh);  // speed lines
+      r(ctx,  7,  -7,  6, 1, k.giSh);
 
-    // KICKING leg thrust straight forward
-    r(ctx, 0, -11, 11, 3, k.gi);
-    r(ctx, 0, -11, 11, 1, k.giSh);
-    r(ctx, 10, -12, 5, 3, PAL.black); // shoe
-
-    // arms: lead fist forward, trailing arm back for balance
-    r(ctx, 0, -16, 4, 2, k.gi);  r(ctx, 4, -16, 2, 2, k.skin);
-    r(ctx, -6, -15, 3, 2, k.giSh); r(ctx, -7, -15, 2, 2, k.skin);
-
-    // little speed lines behind the foot
-    r(ctx, 6, -16, 6, 1, k.giSh);
-    r(ctx, 7, -7, 6, 1, k.giSh);
+    } else {
+      // RETRACT: knee still forward, shin pulling back, torso returning upright
+      r(ctx, -2, -10, 3, 10, k.giSh);  r(ctx, -4, -2, 5, 2, PAL.black);
+      r(ctx,  1, -12, 3,  5, k.gi);    // thigh still raised
+      r(ctx,  2,  -8, 5,  4, k.gi);    // shin swinging forward-back
+      r(ctx,  5,  -5, 4,  2, PAL.black);
+      r(ctx, -3, -18, 7,  9, k.gi);    r(ctx, -3, -18, 2, 9, k.giSh);
+      r(ctx, -3, -12, 7,  2, k.band);
+      r(ctx, -3, -25, 7,  7, k.skin);  r(ctx, -3, -25, 7, 3, k.hair);
+      r(ctx,  2, -21, 1,  1, PAL.black);
+      r(ctx,  3, -18, 2,  5, k.gi);    r(ctx,  3, -14, 2, 2, k.skin);
+      r(ctx, -4, -18, 2,  4, k.giSh);  r(ctx, -4, -15, 2, 2, k.skin);
+    }
   }
 
   function drawHit(ctx, k) {
@@ -247,7 +297,7 @@ KR.sprites = (function () {
       ctx.translate(0, 10);
     }
 
-    if (pose === "kick") drawKick(ctx, k);
+    if (pose === "kick") drawKick(ctx, k, opts.phase || 0);
     else if (pose === "hit") drawHit(ctx, k);
     else if (pose === "idle") drawIdle(ctx, k);
     else if (pose === "punch") drawPunch(ctx, k);
