@@ -514,6 +514,59 @@ KR.bg = (function () {
       cutCastle(ctx, 120, 150, 4.4);
       cutFloor(ctx, gy, "#191222", "#0c0810");
       cutEmbers(ctx, t);
+      // Faint rose glow from the highest tower window — the princess's chamber.
+      // (At scale 4.4 the topmost visible tier sits near y=5; window row at y≈24.)
+      var cwg = ctx.createRadialGradient(120, 25, 1, 120, 25, 14);
+      cwg.addColorStop(0, "rgba(210,100,140,0.28)");
+      cwg.addColorStop(1, "rgba(210,100,140,0)");
+      ctx.fillStyle = cwg; ctx.fillRect(106, 12, 28, 28);
+      ctx.fillStyle = "rgba(220,110,150,0.6)";
+      ctx.fillRect(118, 24, 2, 2);   // the lit window itself, rose-tinted
+    } else if (scene === "dungeon") {
+      // Princess held captive — stone cell, iron bars, torch, moonlit window
+      // Dark stone walls with block texture
+      ctx.fillStyle = "#0c0a12"; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      ctx.fillStyle = "#13101c";
+      for (var dr = 0; dr < 9; dr++) {
+        var deven = dr % 2 === 0;
+        for (var dc = 0; dc < 10; dc++) {
+          ctx.fillRect(dc * 32 + (deven ? 0 : 16), dr * 20, 30, 18);
+        }
+      }
+      // Moonlit window (upper right) — her only contact with the outside world
+      var mwx = 196, mwy = 24;
+      var mspill = ctx.createRadialGradient(mwx + 12, mwy + 10, 2, mwx + 12, mwy + 10, 44);
+      mspill.addColorStop(0, "rgba(140,150,210,0.20)"); mspill.addColorStop(1, "rgba(140,150,210,0)");
+      ctx.fillStyle = mspill; ctx.fillRect(mwx - 24, mwy - 10, 72, 66);
+      ctx.fillStyle = "#1c1830"; ctx.fillRect(mwx, mwy, 24, 18);
+      ctx.fillStyle = "rgba(140,152,215,0.48)"; ctx.fillRect(mwx + 1, mwy + 1, 22, 16);
+      ctx.fillStyle = "#0c0a18";
+      ctx.fillRect(mwx + 11, mwy, 2, 18);  // window cross
+      ctx.fillRect(mwx, mwy + 8, 24, 2);
+      // Damp stone floor
+      ctx.fillStyle = "#14102a"; ctx.fillRect(0, gy, WIDTH, HEIGHT - gy);
+      ctx.fillStyle = "#1e1836"; ctx.fillRect(0, gy, WIDTH, 1);
+      // Torch on left wall — warm amber flicker
+      bossTorch(ctx, 26, 88, 0.5 + 0.5 * Math.abs(Math.sin(t * 5.6)));
+      // Princess — idle, breathing, behind the bars (drawn first so bars overlay her)
+      var pby = gy - (0.4 + 0.4 * Math.sin(t * 1.85));
+      ctx.save(); ctx.globalAlpha = 0.90;
+      SP.fighter(ctx, 165, Math.round(pby), { facing: -1, pose: "idle", kit: KIT_PRINCESS });
+      ctx.restore();
+      // Iron bars — vertical beams across the left two-thirds of the frame
+      for (var bi = 0; bi < 8; bi++) {
+        var bxi = 14 + bi * 15;
+        ctx.fillStyle = "#0c0a16"; ctx.fillRect(bxi, 0, 5, HEIGHT);
+        ctx.fillStyle = "#1c1a2c"; ctx.fillRect(bxi, 0, 1, HEIGHT); // edge highlight
+      }
+      ctx.fillStyle = "#0a0814"; ctx.fillRect(0, 0, 14, HEIGHT);    // solid wall edge
+      ctx.fillStyle = "#0c0a16";
+      ctx.fillRect(12, 54, 128, 5);   // horizontal cross-bar (upper)
+      ctx.fillRect(12, 108, 128, 5);  // horizontal cross-bar (lower)
+      // Torch light tinting the whole cell
+      var tgl = ctx.createRadialGradient(26, 88, 6, 26, 88, 100);
+      tgl.addColorStop(0, "rgba(230,145,65,0.14)"); tgl.addColorStop(1, "rgba(230,145,65,0)");
+      ctx.fillStyle = tgl; ctx.fillRect(0, 0, WIDTH, HEIGHT);
     } else if (scene === "setout") {
       var sc = t * 16;                                          // slow travel
       cutSky(ctx, "dusk");

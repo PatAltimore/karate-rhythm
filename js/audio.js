@@ -235,56 +235,127 @@ KR.audio = (function () {
     }
   }
 
-  // ---- Cut-scene music: slow, wistful, atmospheric ---------------------
-  function pad(t3, t, dur) {            // soft sustained chord
-    for (var i = 0; i < 3; i++) {
-      var o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = "triangle";
-      o.frequency.value = octShift(pcFreq(reduce(t3[i]), 3), 110, 330);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.085, t + 0.4);
-      g.gain.setValueAtTime(0.085, t + dur * 0.6);
-      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      o.connect(g); g.connect(musicGain);
-      o.start(t); o.stop(t + dur + 0.05);
-    }
+  // ---- Cut-scene music: Japanese-inspired (shakuhachi, koto, soft taiko) ---
+  // D pentatonic minor: D(293.66) F(349.23) G(392.00) A(440.00) C(523.25)
+  // All notes are in Hz for clarity; the melody runs on a 64-sixteenth loop.
+
+  function shakuhachi(freq, t, dur) {
+    // LFO vibrato — fades in after initial breath onset
+    var lfo = ctx.createOscillator(), lfog = ctx.createGain();
+    lfo.type = "sine"; lfo.frequency.value = 5.0;
+    lfog.gain.setValueAtTime(0, t);
+    lfog.gain.linearRampToValueAtTime(freq * 0.013, t + 0.28); // subtle vibrato depth
+    lfo.connect(lfog);
+    // Main sine — the clean flute tone
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    lfog.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.19, t + 0.16);
+    g.gain.setValueAtTime(0.19, t + dur * 0.62);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    // Breathiness: narrow bandpass noise around the fundamental
+    var n = ctx.createBufferSource(); n.buffer = noiseBuffer;
+    var bp = ctx.createBiquadFilter(); bp.type = "bandpass";
+    bp.frequency.value = freq * 1.35; bp.Q.value = 14;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.linearRampToValueAtTime(0.026, t + 0.07);
+    ng.gain.setValueAtTime(0.026, t + dur * 0.58);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.86);
+    lfo.start(t); lfo.stop(t + dur + 0.12);
+    o.connect(g); g.connect(musicGain);
+    n.connect(bp); bp.connect(ng); ng.connect(musicGain);
+    o.start(t); o.stop(t + dur + 0.12);
+    n.start(t); n.stop(t + dur * 0.86 + 0.1);
   }
-  function heartbeat(t) {               // soft low pulse
+
+  function kotoPluck(freq, t) {
+    var dur = 2.8;
+    // Main plucked triangle — earthy, wooden
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.20, t + 0.003); // instant attack
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + dur + 0.06);
+    // Slightly inharmonic shimmer — real koto has this
+    var o2 = ctx.createOscillator(), g2 = ctx.createGain();
+    o2.type = "sine"; o2.frequency.value = freq * 2.008;
+    g2.gain.setValueAtTime(0.0001, t);
+    g2.gain.linearRampToValueAtTime(0.08, t + 0.003);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.42);
+    o2.connect(g2); g2.connect(musicGain);
+    o2.start(t); o2.stop(t + dur * 0.42 + 0.06);
+    // Brief high-frequency transient — fingernail on the string
+    var ns = ctx.createBufferSource(); ns.buffer = noiseBuffer;
+    var hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = freq * 5;
+    var nsg = ctx.createGain();
+    nsg.gain.setValueAtTime(0.10, t); nsg.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    ns.connect(hp); hp.connect(nsg); nsg.connect(musicGain);
+    ns.start(t); ns.stop(t + 0.05);
+  }
+
+  function taikoBoom(t, vol) {         // soft contemplative drum pulse
+    var v = vol || 0.26;
     var o = ctx.createOscillator(), g = ctx.createGain();
     o.type = "sine";
-    o.frequency.setValueAtTime(82, t);
-    o.frequency.exponentialRampToValueAtTime(45, t + 0.1);
-    g.gain.setValueAtTime(0.34, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    o.frequency.setValueAtTime(106, t);
+    o.frequency.exponentialRampToValueAtTime(38, t + 0.36);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
     o.connect(g); g.connect(musicGain);
-    o.start(t); o.stop(t + 0.27);
+    o.start(t); o.stop(t + 0.7);
   }
-  function bell(freq, t) {              // gentle bell/flute note
+
+  function kaneBell(freq, t) {         // temple bell (kane) — long ring
     var o = ctx.createOscillator(), g = ctx.createGain();
     o.type = "sine"; o.frequency.value = freq;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.16, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    g.gain.linearRampToValueAtTime(0.13, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 2.8);
     o.connect(g); g.connect(musicGain);
-    o.start(t); o.stop(t + 0.95);
+    o.start(t); o.stop(t + 2.85);
+    // Warm harmonic partial a minor 7th up (bell-like inharmonicity)
     var o2 = ctx.createOscillator(), g2 = ctx.createGain();
-    o2.type = "sine"; o2.frequency.value = freq * 2;
-    g2.gain.setValueAtTime(0.05, t);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o2.type = "sine"; o2.frequency.value = freq * 1.78;
+    g2.gain.setValueAtTime(0.05, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
     o2.connect(g2); g2.connect(musicGain);
-    o2.start(t); o2.stop(t + 0.52);
+    o2.start(t); o2.stop(t + 1.45);
   }
+
+  // Japanese melody: 64-sixteenth loop (~34 s at 110 BPM).
+  // D pentatonic minor. Sparse, mournful, hopeful in turns.
   function scheduleCutscene(step, t) {
-    var inBar = step % 16;
-    var bar = Math.floor((step % 64) / 16);
-    var roots = [0, 8, 3, 10], quals = ["min", "maj", "maj", "maj"]; // Am F C G
-    var t3 = triad(roots[bar], quals[bar]);
-    if (inBar === 0) pad(t3, t, beatDuration * 3.9);
-    if (inBar === 0 || inBar === 8) heartbeat(t);
-    if (inBar === 4 || inBar === 10 || inBar === 14) {
-      var pick = [t3[2], t3[1], t3[0]][(inBar / 2) % 3];
-      bell(pcFreq(reduce(pick), 5), t);
-    }
+    var s = step % 64;
+    var BD = beatDuration;
+
+    // Shakuhachi melody events [freq_Hz, duration_beats]
+    var mel = {
+      0:  [293.66, BD * 4.0],  // D4 — long opening breath
+      10: [392.00, BD * 2.8],  // G4 — upward sigh
+      18: [440.00, BD * 1.6],  // A4 — slight rise
+      24: [349.23, BD * 3.8],  // F4 — falling minor 3rd, melancholic
+      36: [293.66, BD * 1.8],  // D4 — return to tonic
+      44: [440.00, BD * 3.4],  // A4 — hopeful leap upward
+      52: [392.00, BD * 1.4],  // G4 — gentle fall
+      56: [349.23, BD * 1.2],  // F4 — breath
+      60: [293.66, BD * 4.8]   // D4 — long closing note (overlaps next cycle)
+    };
+    if (mel[s]) shakuhachi(mel[s][0], t, mel[s][1]);
+
+    // Koto plucks — low register, earthy and sparse
+    var kot = { 0: 146.83, 24: 110.00, 40: 196.00, 56: 146.83 };
+    // 146.83=D3, 110.00=A2, 196.00=G3
+    if (kot[s] !== undefined) kotoPluck(kot[s], t);
+
+    // Soft taiko on downbeats
+    if (s === 0)  taikoBoom(t, 0.26);
+    if (s === 32) taikoBoom(t, 0.16);
+
+    // Kane (temple bell) — sparse, resonant
+    if (s === 16) kaneBell(440.00, t);   // A4
+    if (s === 48) kaneBell(293.66, t);   // D4
   }
 
   // ---- Sequencer -------------------------------------------------------

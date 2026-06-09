@@ -68,14 +68,15 @@
   // ---- Story cut-scenes (between acts) ---------------------------------
   var CUTSCENES = {
     intro: [
-      { scene: "castle", text: "The Shogun has seized the mountain castle — and taken the princess." },
-      { scene: "setout", text: "At dusk you set out alone. Only rhythm and resolve will carry you." },
-      { scene: "cliff",  text: "You scale the cliff to the palace road above — his guards await." }
+      { scene: "castle",  text: "The Shogun Akuma has seized the mountain castle — and taken the princess captive." },
+      { scene: "dungeon", text: "In the dungeon keep she waits, her hope dimming with each passing hour." },
+      { scene: "setout",  text: "At dusk you set out alone. Only rhythm and resolve will carry you to her." },
+      { scene: "cliff",   text: "You scale the cliff to the palace road. His guards stand between you and her freedom." }
     ],
-    act2:    [{ scene: "river",  text: "Beyond the river his guards close ranks, and the sky bleeds to dusk." }],
-    act3:    [{ scene: "gates",  text: "The castle gates loom. Helmed elites bar the final road." }],
-    boss:    [{ scene: "throne", text: "Within the throne room, the Shogun rises. One duel remains." }],
-    victory: [{ scene: "dawn",   text: "The Shogun falls. Dawn breaks over the freed castle." }]
+    act2:    [{ scene: "river",  text: "Beyond the river his guards grow stronger. She endures — you cannot fail her." }],
+    act3:    [{ scene: "gates",  text: "The castle gates. His mightiest warriors bar the final road to the princess." }],
+    boss:    [{ scene: "throne", text: "The Shogun rises from his throne. Defeat him — and the princess goes free." }],
+    victory: [{ scene: "dawn",   text: "The Shogun falls. The princess is freed. Dawn breaks over the restored castle." }]
   };
   var CUT_PANEL_DUR = 5.5;         // seconds each panel auto-holds (tap to advance)
   var FADE_DUR = 0.45;             // fade-to-black duration on transitions
