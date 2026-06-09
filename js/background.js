@@ -896,6 +896,18 @@ KR.bg = (function () {
       ctx.fillRect(cx - 2, y + Math.round(th * 0.4), 2, 2);
       ctx.fillRect(cx + 1, y + Math.round(th * 0.4), 2, 2);
     }
+    // Two large demon horns flanking the spire atop the highest tier
+    var topY = Math.round(baseY - tiers * th);
+    var s = scale;
+    ctx.fillStyle = roof;
+    // Left horn — 3 steps sweeping up and outward
+    ctx.fillRect(Math.round(cx - 4*s), topY - Math.round(2*s), Math.round(3*s), Math.round(2*s));
+    ctx.fillRect(Math.round(cx - 6*s), topY - Math.round(4*s), Math.round(2*s), Math.round(2*s));
+    ctx.fillRect(Math.round(cx - 7*s), topY - Math.round(6*s), Math.round(s),   Math.round(2*s));
+    // Right horn — mirror
+    ctx.fillRect(Math.round(cx + 2*s), topY - Math.round(2*s), Math.round(3*s), Math.round(2*s));
+    ctx.fillRect(Math.round(cx + 5*s), topY - Math.round(4*s), Math.round(2*s), Math.round(2*s));
+    ctx.fillRect(Math.round(cx + 7*s), topY - Math.round(6*s), Math.round(s),   Math.round(2*s));
     ctx.fillStyle = "#d8b048"; ctx.fillRect(cx - 1, Math.round(baseY - tiers * th - 4), 2, 5);
   }
   function grandGate(ctx, cx, gy) {
