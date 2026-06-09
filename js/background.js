@@ -640,20 +640,6 @@ KR.bg = (function () {
     cx = Math.round(cx);
     dep = dep || 0; depF = depF || 0;
     var S = "#281c0e", SL = "#3c2618", SD = "#140a04";
-    var PW = 10; // post width
-
-    // Left upright — position shifts with dep (far-side, slower parallax)
-    var lx = cx + dep - 38;
-    ctx.fillStyle = S;  ctx.fillRect(lx, 28, PW, gY - 28);
-    ctx.fillStyle = SL; ctx.fillRect(lx, 28, 2, gY - 28);
-    ctx.fillStyle = SD; ctx.fillRect(lx + 8, 28, 2, gY - 28);
-    ctx.fillStyle = SD; ctx.fillRect(lx - 2, gY - 4, PW + 4, 4);
-
-    // Right upright — stays at near position (full-speed parallax)
-    ctx.fillStyle = S;  ctx.fillRect(cx + 28, 28, PW, gY - 28);
-    ctx.fillStyle = SL; ctx.fillRect(cx + 28, 28, 2, gY - 28);
-    ctx.fillStyle = SD; ctx.fillRect(cx + 36, 28, 2, gY - 28);
-    ctx.fillStyle = SD; ctx.fillRect(cx + 26, gY - 4, PW + 4, 4);
 
     // Main header beam — left extent shifts with dep, right stays fixed
     var beamL = cx + dep - 48, beamR = cx + 52, beamW = beamR - beamL;
@@ -740,36 +726,6 @@ KR.bg = (function () {
     ctx.arc(cx, archCY, archR + 2, 0, Math.PI, true);
     ctx.closePath();
     ctx.fill();
-
-    // Left pillar shaft — shifted right by dep (far-side, slower parallax)
-    var llx = cx + dep - archR - SW;
-    ctx.fillStyle = SL; ctx.fillRect(llx, archCY, 2, gY - archCY);
-    ctx.fillStyle = S;  ctx.fillRect(llx + 2, archCY, SW - 4, gY - archCY);
-    ctx.fillStyle = SD; ctx.fillRect(llx + SW - 2, archCY, 2, gY - archCY);
-
-    // Right pillar shaft — stays at near position
-    ctx.fillStyle = SL; ctx.fillRect(cx + archR, archCY, 2, gY - archCY);
-    ctx.fillStyle = S;  ctx.fillRect(cx + archR + 2, archCY, SW - 4, gY - archCY);
-    ctx.fillStyle = SD; ctx.fillRect(cx + archR + SW - 2, archCY, 2, gY - archCY);
-
-    // Stone course lines
-    ctx.fillStyle = SD;
-    for (var py = archCY + 8; py < gY - 4; py += 10) {
-      ctx.fillRect(llx, py, SW, 1);
-      ctx.fillRect(cx + archR, py, SW, 1);
-    }
-
-    // Capitals — left at far depth, right at near
-    ctx.fillStyle = S; ctx.fillRect(llx - 2, archCY - 5, SW + 4, 6);
-    ctx.fillStyle = G; ctx.fillRect(llx - 1, archCY - 3, SW + 2, 2);
-    ctx.fillStyle = S; ctx.fillRect(cx + archR - 2, archCY - 5, SW + 4, 6);
-    ctx.fillStyle = G; ctx.fillRect(cx + archR - 1, archCY - 3, SW + 2, 2);
-
-    // Base moulding — left at far depth, right at near
-    ctx.fillStyle = S; ctx.fillRect(llx - 2, gY - 5, SW + 4, 5);
-    ctx.fillStyle = G; ctx.fillRect(llx - 1, gY - 4, SW + 2, 1);
-    ctx.fillStyle = S; ctx.fillRect(cx + archR - 2, gY - 5, SW + 4, 5);
-    ctx.fillStyle = G; ctx.fillRect(cx + archR - 1, gY - 4, SW + 2, 1);
 
     // Keystone
     ctx.fillStyle = G;  ctx.fillRect(cx - 6, 48, 12, 4);
@@ -912,16 +868,6 @@ KR.bg = (function () {
     dep = dep || 0; depF = depF || 0;
     var V = "#b5402c", VD = "#7a2418", VL = "#cf5a40", K = "#2a0f0a";
     var top = 50;
-
-    // Left pillar at far depth (shifted right by dep), right pillar at near
-    function pillar(px) {
-      ctx.fillStyle = V;  ctx.fillRect(px - 3, top + 6, 7, gY - (top + 6));
-      ctx.fillStyle = VD; ctx.fillRect(px - 3, top + 6, 2, gY - (top + 6));
-      ctx.fillStyle = VL; ctx.fillRect(px + 3, top + 6, 1, gY - (top + 6));
-      ctx.fillStyle = K;  ctx.fillRect(px - 4, gY - 2, 9, 2);
-    }
-    pillar(cx + dep - 30);   // left post at far depth
-    pillar(cx + 30);          // right post at near depth
 
     // nuki (lower tie beam) — left end shifts with dep, right stays fixed
     var nukiL = cx + dep - 40, nukiR = cx + 40, nukiW = nukiR - nukiL;
