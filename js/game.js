@@ -842,6 +842,8 @@
       drawPlayer();
       for (var s = 0; s < sparks.length; s++) S.spark(ctx, sparks[s].x, sparks[s].y, sparks[s].t, sparks[s].color);
       for (var ff = 0; ff < feathers.length; ff++) drawFeather(feathers[ff]);
+      // Foreground gate pillars — drawn OVER heroes so they pass between columns
+      for (var gf = 0; gf < gates.length; gf++) BG.gateFore(ctx, gates[gf].screenX, GROUND_Y, runAct);
       ctx.globalAlpha = 1;
     }
     ctx.restore();

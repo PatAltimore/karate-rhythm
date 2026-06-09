@@ -765,6 +765,85 @@ KR.bg = (function () {
     torii(ctx, cx, gY);
   }
 
+  // ---- Gate foreground layer: full-height pillars drawn OVER the hero ---
+  // Splitting each gate into a background arch (pre-fighters) + foreground
+  // columns (post-fighters) gives the sensation of running BETWEEN two
+  // tall pillars as you cross each level boundary.
+  //
+  // Foreground columns fade in as the gate approaches (cx ≈ 200→120) and
+  // remain fully opaque while the hero passes through.
+  // Lit inner faces face the hero; shadow falls on outer faces.
+
+  function toriiFore(ctx, cx) {
+    var V = "#b5402c", VD = "#7a2418", VL = "#cf5a40", K = "#2a0f0a";
+    var PASS = 28, PW = 14;
+    var lx = cx - PASS - PW, rx = cx + PASS;
+    // Left pillar — lit on the right (inner) face
+    ctx.fillStyle = V;  ctx.fillRect(lx, 0, PW, HEIGHT);
+    ctx.fillStyle = VD; ctx.fillRect(lx, 0, 3, HEIGHT);
+    ctx.fillStyle = VL; ctx.fillRect(lx + PW - 1, 0, 1, HEIGHT);
+    ctx.fillStyle = K;  ctx.fillRect(lx - 1, GROUND_Y - 2, PW + 2, 3);
+    // Right pillar — lit on the left (inner) face
+    ctx.fillStyle = V;  ctx.fillRect(rx, 0, PW, HEIGHT);
+    ctx.fillStyle = VL; ctx.fillRect(rx, 0, 1, HEIGHT);
+    ctx.fillStyle = VD; ctx.fillRect(rx + PW - 3, 0, 3, HEIGHT);
+    ctx.fillStyle = K;  ctx.fillRect(rx - 1, GROUND_Y - 2, PW + 2, 3);
+  }
+
+  function woodArchFore(ctx, cx) {
+    var S = "#281c0e", SL = "#3c2618", SD = "#140a04";
+    var PASS = 28, PW = 12;
+    var lx = cx - PASS - PW, rx = cx + PASS;
+    // Left post — lit on the right (inner) face
+    ctx.fillStyle = S;  ctx.fillRect(lx, 0, PW, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(lx, 0, 2, HEIGHT);
+    ctx.fillStyle = SL; ctx.fillRect(lx + PW - 1, 0, 1, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(lx - 2, GROUND_Y - 4, PW + 4, 4);
+    // Right post — lit on the left (inner) face
+    ctx.fillStyle = S;  ctx.fillRect(rx, 0, PW, HEIGHT);
+    ctx.fillStyle = SL; ctx.fillRect(rx, 0, 1, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(rx + PW - 2, 0, 2, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(rx - 2, GROUND_Y - 4, PW + 4, 4);
+  }
+
+  function stoneArchFore(ctx, cx) {
+    var S = "#1e1a30", SL = "#2c2844", SD = "#0e0c1e", G = "#c49430";
+    var PASS = 28, PW = 16;
+    var lx = cx - PASS - PW, rx = cx + PASS;
+    var py;
+    // Left column — lit on the right (inner) face
+    ctx.fillStyle = S;  ctx.fillRect(lx, 0, PW, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(lx, 0, 2, HEIGHT);
+    ctx.fillStyle = SL; ctx.fillRect(lx + PW - 1, 0, 1, HEIGHT);
+    ctx.fillStyle = G;
+    for (py = 10; py < HEIGHT - 4; py += 26) ctx.fillRect(lx + 2, py, PW - 4, 1);
+    ctx.fillStyle = SD; ctx.fillRect(lx - 2, GROUND_Y - 6, PW + 4, 6);
+    ctx.fillStyle = G;  ctx.fillRect(lx - 1, GROUND_Y - 5, PW + 2, 1);
+    // Right column — lit on the left (inner) face
+    ctx.fillStyle = S;  ctx.fillRect(rx, 0, PW, HEIGHT);
+    ctx.fillStyle = SL; ctx.fillRect(rx, 0, 1, HEIGHT);
+    ctx.fillStyle = SD; ctx.fillRect(rx + PW - 2, 0, 2, HEIGHT);
+    ctx.fillStyle = G;
+    for (py = 10; py < HEIGHT - 4; py += 26) ctx.fillRect(rx + 2, py, PW - 4, 1);
+    ctx.fillStyle = SD; ctx.fillRect(rx - 2, GROUND_Y - 6, PW + 4, 6);
+    ctx.fillStyle = G;  ctx.fillRect(rx - 1, GROUND_Y - 5, PW + 2, 1);
+  }
+
+  // Foreground dispatcher: fades in as gate approaches (cx 200→120),
+  // fully opaque while hero passes through, then exits with the gate.
+  function gateFore(ctx, cx, gY, act) {
+    cx = Math.round(cx);
+    if (cx < -60 || cx > WIDTH + 20) return;  // fully off-screen: skip
+    var alpha = Math.max(0, Math.min(1, (200 - cx) / 80));
+    if (alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (act === 2) { woodArchFore(ctx, cx); }
+    else if (act === 3) { stoneArchFore(ctx, cx); }
+    else { toriiFore(ctx, cx); }
+    ctx.restore();
+  }
+
   // ---- Torii gate (level marker the runner passes through) -------------
   function torii(ctx, cx, gY) {
     cx = Math.round(cx);
@@ -1128,7 +1207,7 @@ KR.bg = (function () {
   }
 
   return {
-    draw: draw, gate: gate, torii: torii, drawBoss: drawBoss, cut: cut,
+    draw: draw, gate: gate, gateFore: gateFore, torii: torii, drawBoss: drawBoss, cut: cut,
     WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_Y: GROUND_Y
   };
 })();
