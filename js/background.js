@@ -995,7 +995,7 @@ KR.bg = (function () {
     ctx.fillStyle = "#0c0a10"; ctx.fillRect(cx - 56, 56, 112, 6);    // roof
     ctx.fillStyle = "#1a1018"; ctx.fillRect(cx - 31, 84, 62, gy - 84); // dark opening
   }
-  var KIT_PRINCESS = { gi: "#c86a86", giSh: "#9a4a64", band: "#e0c050", hair: "#241018" };
+  var KIT_PRINCESS = { gi: "#f0ede4", giSh: "#c8c4b8", band: "#e0c050", hair: "#241018" };
 
   function cutEmbers(ctx, t) {
     ctx.fillStyle = "rgba(232,150,80,0.55)";
