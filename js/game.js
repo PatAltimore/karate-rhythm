@@ -51,7 +51,7 @@
   var BOSS_HP = 20;                // counters needed to fell the Shogun
   var BOSS_REST_X = 232;           // Shogun's resting spot (right)
   var BOSS_STRIKE_X = 166;         // Shogun lunges to here on a real attack
-  var FEINT_MID_X = 191;           // feint only reaches here — dangerous but stops short
+  var FEINT_MID_X = 210;           // feint only reaches here — visibly short of BOSS_STRIKE_X (166)
   var DUEL_HERO_X = 122;           // hero holds a fixed stance near centre
   // Advance speed scales with phase: faster as the Shogun's HP falls.
   // [phase 0 HP>60%, phase 1 30-60%, phase 2 <30%]
@@ -435,10 +435,11 @@
       }
     }
 
-    // an attack beat past its counter window that wasn't countered -> its blow lands
+    // Beats that have fully expired — resolve any that went unhandled.
     var lastB = Math.floor(bb - HIT_GOOD / audio.beatDuration);
     while (boss.checkBeat <= lastB) {
       var b = boss.checkBeat;
+      // Attack beat the player didn't counter -> blow lands
       if (b >= FIGHT_START && bossAttacksOn(b - FIGHT_START, hpFrac) && !boss.resolved[b]) {
         boss.resolved[b] = "hit";
         heroDuel.pose = "hit"; heroDuel.poseT = 0.35;
@@ -447,6 +448,11 @@
         shake(4.5, 0.3); flashDanger = 0.18;
         audio.playMiss();
         if (strength <= 0) { gameOver(); return; }
+      }
+      // Feint beat the player didn't tap -> "FEINT! (you read it)" gold feedback
+      if (b >= FIGHT_START && bossFeintOn(b - FIGHT_START, hpFrac) && !boss.feintResolved[b]) {
+        boss.feintResolved[b] = "dodge";
+        popup("FEINT!", "feint-dodge", W * 0.72, GROUND_Y - 54);
       }
       boss.checkBeat++;
     }
@@ -466,7 +472,7 @@
     // Feint wins when it is closer AND inside the timing window — the player was fooled.
     if (F !== null && fErr <= HIT_GOOD && fErr <= bErr && !boss.feintResolved[F]) {
       boss.feintResolved[F] = true;
-      popup("FEINT!", "miss", DUEL_HERO_X + 24, GROUND_Y - 40);
+      popup("FEINT!", "feint", W / 2, 58);   // big red banner — you fell for it
       heroDuel.pose = "hit"; heroDuel.poseT = 0.28;
       strength -= Math.round(BOSS_WHIFF_COST * 1.2); combo = 0;
       shake(3.5, 0.22); flashDanger = 0.16;
