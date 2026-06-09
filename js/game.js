@@ -50,13 +50,20 @@
   // ---- Final boss duel -------------------------------------------------
   var BOSS_HP = 20;                // counters needed to fell the Shogun
   var BOSS_REST_X = 232;           // Shogun's resting spot (right)
-  var BOSS_STRIKE_X = 166;         // Shogun lunges to here on the attack beat
+  var BOSS_STRIKE_X = 166;         // Shogun lunges to here on a real attack
+  var FEINT_MID_X = 191;           // feint only reaches here — dangerous but stops short
   var DUEL_HERO_X = 122;           // hero holds a fixed stance near centre
-  var ADV_LEAD = 0.5;              // beats the Shogun takes to lunge in
-  var ADV_FOLLOW = 0.42;           // beats it takes to retreat
+  // Advance speed scales with phase: faster as the Shogun's HP falls.
+  // [phase 0 HP>60%, phase 1 30-60%, phase 2 <30%]
+  var ADV_LEAD_PH   = [0.50, 0.34, 0.22];
+  var ADV_FOLLOW_PH = [0.42, 0.30, 0.20];
+  function advLead(f)   { return ADV_LEAD_PH  [f > 0.6 ? 0 : f > 0.3 ? 1 : 2]; }
+  function advFollow(f) { return ADV_FOLLOW_PH[f > 0.6 ? 0 : f > 0.3 ? 1 : 2]; }
   var FIGHT_START = 5;             // duel beats of entrance (walk in, bow, stance)
-  var BLOCK_MISS_COST = 12;        // strength lost when its blow lands
-  var BOSS_WHIFF_COST = 5;         // strength lost on a mistimed tap
+  var BLOCK_MISS_COST = 12;        // strength lost when Shogun's blow lands
+  var BOSS_WHIFF_COST = 14;        // strength lost on a mistimed tap (toughened from 5)
+  var BOSS_HEAL_BEATS = [32, 64];  // duel beats at which the Shogun recovers HP
+  var BOSS_HEAL_AMT   = 5;         // HP recovered each time
 
   // ---- Story cut-scenes (between acts) ---------------------------------
   var CUTSCENES = {
@@ -314,39 +321,66 @@
   // then retreats. Tap on the beat it arrives to COUNTER (damage it); miss and
   // its blow lands (you lose strength). Attacks get denser as its HP falls.
   var BOSS_PATTERNS = [
-    [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], // phase 0 (HP>60%): steady, every 4 beats
+    [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0], // phase 0 (HP>60%): steady
     [1,0,0,1, 0,0,1,0, 0,1,0,0, 1,0,1,0], // phase 1 (30-60%): syncopated
     [1,0,1,0, 1,0,1,1, 0,1,0,1, 1,0,1,0]  // phase 2 (<30%): relentless
   ];
+  // Feint patterns: Shogun winds up and advances partway but does NOT strike.
+  // Tapping on a feint is punished. No slot overlaps with BOSS_PATTERNS above.
+  var FEINT_PATTERNS = [
+    [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0], // phase 0: no feints (learn the rhythm first)
+    [0,0,0,0, 0,1,0,0, 0,0,0,0, 0,0,0,1], // phase 1: 2 feints per 16-beat cycle
+    [0,1,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,1]  // phase 2: 3 feints — trust your eyes, not your ears
+  ];
+  function bossPh(f) { return f > 0.6 ? 0 : f > 0.3 ? 1 : 2; }
   function bossAttacksOn(idx, hpFrac) {
-    var p = hpFrac > 0.6 ? 0 : hpFrac > 0.3 ? 1 : 2;
-    return BOSS_PATTERNS[p][((idx % 16) + 16) % 16] === 1;
+    return BOSS_PATTERNS[bossPh(hpFrac)][((idx % 16) + 16) % 16] === 1;
+  }
+  function bossFeintOn(idx, hpFrac) {
+    return FEINT_PATTERNS[bossPh(hpFrac)][((idx % 16) + 16) % 16] === 1;
   }
   function bossStrikeType(beatIdx) {
-    return (((beatIdx % 2) + 2) % 2 === 0) ? "kick" : "punch"; // drum vs cymbal
+    return (((beatIdx % 2) + 2) % 2 === 0) ? "kick" : "punch";
   }
-  function nearestAttack(bb, hpFrac) {     // closest attack beat within +/-1, or null
+  // Generic: closest beat matching testFn within ±1, or null.
+  function nearestBeat(bb, hpFrac, testFn) {
     var c = Math.round(bb), best = null, err = Infinity;
     for (var b = c - 1; b <= c + 1; b++) {
-      if (b >= FIGHT_START && bossAttacksOn(b - FIGHT_START, hpFrac)) {
+      if (b >= FIGHT_START && testFn(b - FIGHT_START, hpFrac)) {
         var e = Math.abs(bb - b);
         if (e < err) { err = e; best = b; }
       }
     }
     return best;
   }
-  function activeAttack(bb, hpFrac) {       // attack whose lunge window holds bb
-    for (var b = Math.ceil(bb - ADV_FOLLOW); b <= Math.floor(bb + ADV_LEAD); b++) {
-      if (b >= FIGHT_START && bossAttacksOn(b - FIGHT_START, hpFrac) &&
-          bb >= b - ADV_LEAD && bb <= b + ADV_FOLLOW) return b;
+  function nearestAttack(bb, f) { return nearestBeat(bb, f, bossAttacksOn); }
+  function nearestFeint(bb, f)  { return nearestBeat(bb, f, bossFeintOn);  }
+  // Generic: beat whose lunge window (phase-scaled) currently contains bb.
+  function activeBeat(bb, hpFrac, testFn) {
+    var AL = advLead(hpFrac), AF = advFollow(hpFrac);
+    for (var b = Math.ceil(bb - AF); b <= Math.floor(bb + AL); b++) {
+      if (b >= FIGHT_START && testFn(b - FIGHT_START, hpFrac) &&
+          bb >= b - AL && bb <= b + AF) return b;
     }
     return null;
   }
+  function activeAttack(bb, f) { return activeBeat(bb, f, bossAttacksOn); }
+  function activeFeint(bb, f)  { return activeBeat(bb, f, bossFeintOn);  }
   function bossDuelX(bb, hpFrac) {
+    var AL = advLead(hpFrac), AF = advFollow(hpFrac);
     var B = activeAttack(bb, hpFrac);
-    if (B === null) return BOSS_REST_X;     // standing back at rest
-    if (bb < B) return lerp(BOSS_REST_X, BOSS_STRIKE_X, clamp((bb - (B - ADV_LEAD)) / ADV_LEAD, 0, 1));
-    return lerp(BOSS_STRIKE_X, BOSS_REST_X, clamp((bb - B) / ADV_FOLLOW, 0, 1));
+    if (B !== null) {
+      // real attack: lunge all the way to BOSS_STRIKE_X
+      if (bb < B) return lerp(BOSS_REST_X, BOSS_STRIKE_X, clamp((bb-(B-AL))/AL, 0, 1));
+      return lerp(BOSS_STRIKE_X, BOSS_REST_X, clamp((bb-B)/AF, 0, 1));
+    }
+    var F = activeFeint(bb, hpFrac);
+    if (F !== null) {
+      // feint: advances to midpoint only — looks threatening but stops short
+      if (bb < F) return lerp(BOSS_REST_X, FEINT_MID_X, clamp((bb-(F-AL))/AL, 0, 1));
+      return lerp(FEINT_MID_X, BOSS_REST_X, clamp((bb-F)/AF, 0, 1));
+    }
+    return BOSS_REST_X;
   }
 
   function enterBoss() {
@@ -359,9 +393,10 @@
     if (audio.setBossMode) audio.setBossMode(true);
     audio.start();                         // boss music on a fresh timeline
     boss = {
-      hp: BOSS_HP, pose: "idle", poseT: 0, bob: 0, hitFlash: 0,
+      hp: BOSS_HP, pose: "idle", poseT: 0, bob: 0, hitFlash: 0, healFlash: 0,
       startBeat: Math.ceil(audio.getCurrentBeat()),
-      checkBeat: FIGHT_START, resolved: {}, defeated: false, defeatT: 0
+      checkBeat: FIGHT_START, resolved: {}, feintResolved: {},
+      healed: {}, defeated: false, defeatT: 0
     };
     heroDuel = { pose: "idle", poseT: 0 };
     popup("THE SHOGUN", "level", W / 2, 38);
@@ -374,7 +409,8 @@
     var nowBeat = audio.getCurrentBeat();
     var bb = nowBeat - boss.startBeat;
     boss.bob = Math.sin(nowBeat * Math.PI * 2) * 1.0;
-    if (boss.hitFlash > 0) boss.hitFlash -= dt;
+    if (boss.hitFlash  > 0) boss.hitFlash  -= dt;
+    if (boss.healFlash > 0) boss.healFlash -= dt;
     if (heroDuel.poseT > 0 && (heroDuel.poseT -= dt) <= 0) heroDuel.pose = "idle";
     if (boss.poseT > 0 && (boss.poseT -= dt) <= 0) boss.pose = "idle";
 
@@ -385,6 +421,19 @@
     }
 
     var hpFrac = boss.hp / BOSS_HP;
+
+    // Shogun recovers HP at fixed duel beats — punishes stalling, creates urgency
+    for (var hi = 0; hi < BOSS_HEAL_BEATS.length; hi++) {
+      var hb = BOSS_HEAL_BEATS[hi];
+      if (bb >= hb && !boss.healed[hb]) {
+        boss.healed[hb] = true;
+        boss.hp = Math.min(BOSS_HP, boss.hp + BOSS_HEAL_AMT);
+        boss.healFlash = 0.5;
+        flashDanger = 0.28;
+        popup("SHOGUN RECOVERS!", "miss", W / 2, 52);
+      }
+    }
+
     // an attack beat past its counter window that wasn't countered -> its blow lands
     var lastB = Math.floor(bb - HIT_GOOD / audio.beatDuration);
     while (boss.checkBeat <= lastB) {
@@ -407,14 +456,27 @@
     var bb = audio.getCurrentBeat() - boss.startBeat;
     if (bb < FIGHT_START - 0.3) return;     // ignore taps during the entrance
     var hpFrac = boss.hp / BOSS_HP;
-    var B = nearestAttack(bb, hpFrac);
-    var errSec = B === null ? Infinity : Math.abs(bb - B) * audio.beatDuration;
 
-    if (B !== null && errSec <= HIT_GOOD && !boss.resolved[B]) {
-      // COUNTER the Shogun's attack
+    var B = nearestAttack(bb, hpFrac);
+    var bErr = B === null ? Infinity : Math.abs(bb - B) * audio.beatDuration;
+    var F = nearestFeint(bb, hpFrac);
+    var fErr = F === null ? Infinity : Math.abs(bb - F) * audio.beatDuration;
+
+    // Feint wins when it is closer AND inside the timing window — the player was fooled.
+    if (F !== null && fErr <= HIT_GOOD && fErr <= bErr && !boss.feintResolved[F]) {
+      boss.feintResolved[F] = true;
+      popup("FEINT!", "miss", DUEL_HERO_X + 24, GROUND_Y - 40);
+      heroDuel.pose = "hit"; heroDuel.poseT = 0.28;
+      strength -= Math.round(BOSS_WHIFF_COST * 1.2); combo = 0;
+      shake(3.5, 0.22); flashDanger = 0.16;
+      audio.playMiss();
+      if (strength <= 0) gameOver();
+
+    } else if (B !== null && bErr <= HIT_GOOD && !boss.resolved[B]) {
+      // COUNTER the real attack
       boss.resolved[B] = "counter";
-      var quality = errSec <= HIT_PERFECT ? "perfect" : "good";
-      var typ = bossStrikeType(B);          // kick (drum) or punch (cymbal)
+      var quality = bErr <= HIT_PERFECT ? "perfect" : "good";
+      var typ = bossStrikeType(B);
       heroDuel.pose = typ; heroDuel.poseT = 0.24;
       boss.hp -= 1;
       boss.pose = "hit"; boss.poseT = 0.4; boss.hitFlash = 0.18;
@@ -427,7 +489,9 @@
         boss.hp = 0; boss.defeated = true; boss.defeatT = 0;
         boss.pose = "hit"; score += 600; flashT = 0.3;
       }
+
     } else {
+      // Miss — nothing nearby to counter
       heroDuel.pose = "punch"; heroDuel.poseT = 0.18;
       strength -= BOSS_WHIFF_COST; combo = 0;
       audio.playMiss();
@@ -451,13 +515,14 @@
     S.shadow(ctx, hx, GROUND_Y, 16, 0.3);
     S.fighter(ctx, hx, GROUND_Y, { facing: 1, pose: hpose, phase: bb * 1.6, kit: PLAYER_KIT });
 
-    // the Shogun: advances to strike on attack beats, then retreats
+    // the Shogun: advances on attack beats (full lunge) or feint beats (stops short)
     var bx = boss ? bossDuelX(bb, hpFrac) : BOSS_REST_X;
     var bpose = "idle";
     if (boss) {
       if (boss.defeated) bpose = "defeated";
       else if (boss.poseT > 0) bpose = boss.pose;
       else if (activeAttack(bb, hpFrac) !== null) bpose = "attack";
+      else if (activeFeint(bb, hpFrac) !== null) bpose = "windup"; // feint shows as wind-up
     }
     S.shadow(ctx, bx, GROUND_Y, 26, 0.34);
     S.boss(ctx, bx, GROUND_Y - (boss ? boss.bob : 0), { facing: -1, pose: bpose });
@@ -466,6 +531,13 @@
       ctx.globalAlpha = boss.hitFlash / 0.18 * 0.5;
       ctx.fillStyle = "#fff";
       ctx.fillRect(bx - 16, GROUND_Y - 46, 32, 46);
+      ctx.restore();
+    }
+    if (boss && boss.healFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = (boss.healFlash / 0.5) * 0.52;
+      ctx.fillStyle = "#d8b048";   // gold recovery glow
+      ctx.fillRect(bx - 20, GROUND_Y - 52, 40, 52);
       ctx.restore();
     }
     for (var s = 0; s < sparks.length; s++) S.spark(ctx, sparks[s].x, sparks[s].y, sparks[s].t, sparks[s].color);
@@ -869,7 +941,7 @@
     document.getElementById("final-combo").textContent = bestCombo;
     document.getElementById("final-level").textContent = checkpointAct === 4 ? "BOSS" : displayLevel;
     var rb = document.getElementById("restart-btn");
-    if (rb) rb.textContent = checkpointAct === 1 ? "► AGAIN" : "► " + actName(checkpointAct) + " RETRY";
+    if (rb) rb.textContent = checkpointAct === 1 ? "► Try again" : "► " + actName(checkpointAct) + " RETRY";
     gameoverEl.classList.remove("hidden");
   }
 
