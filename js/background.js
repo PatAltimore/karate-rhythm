@@ -993,6 +993,11 @@ KR.bg = (function () {
       ctx.fillStyle = roof;
       ctx.fillRect(cx - hw - 3, y - 1, w + 6, 2);
       ctx.fillRect(cx - hw - 4, y, 2, 1); ctx.fillRect(cx + hw + 2, y, 2, 1);
+      // upswept horn finials at each eave corner (oni-gawara style)
+      ctx.fillRect(cx - hw - 5, y - 2, 1, 2);   // left horn shaft
+      ctx.fillRect(cx - hw - 6, y - 3, 1, 1);   // left horn tip (angled out)
+      ctx.fillRect(cx + hw + 4, y - 2, 1, 2);   // right horn shaft
+      ctx.fillRect(cx + hw + 5, y - 3, 1, 1);   // right horn tip
       ctx.fillStyle = c; ctx.fillRect(cx - hw, y, w, Math.round(th));
       ctx.fillStyle = lit;
       ctx.fillRect(cx - 2, y + Math.round(th * 0.4), 2, 2);
@@ -1008,7 +1013,7 @@ KR.bg = (function () {
     ctx.fillStyle = "#0c0a10"; ctx.fillRect(cx - 56, 56, 112, 6);    // roof
     ctx.fillStyle = "#1a1018"; ctx.fillRect(cx - 31, 84, 62, gy - 84); // dark opening
   }
-  var KIT_PRINCESS = { gi: "#f0ede4", giSh: "#c8c4b8", band: "#e0c050", hair: "#241018" };
+  var KIT_PRINCESS = { gi: "#f0ede4", giSh: "#c8c4b8", band: "#e0c050", hair: "#d4a020", longhair: true };
 
   function cutEmbers(ctx, t) {
     ctx.fillStyle = "rgba(232,150,80,0.55)";

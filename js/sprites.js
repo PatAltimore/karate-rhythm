@@ -260,6 +260,16 @@ KR.sprites = (function () {
       drawRank(ctx, k, opts.rank, a.head, a.torso);
     }
 
+    // Long hair: flowing blonde tresses down the back (used by the princess).
+    // Drawn last so it overlaps the torso behind the head.
+    if (opts.kit && opts.kit.longhair) {
+      var hc = k.hair;
+      r(ctx, -5, -23, 3, 16, hc);   // main fall behind the head/back
+      r(ctx, -6, -20, 2, 11, hc);   // outer wisp
+      r(ctx, -5, -7,  4,  5, hc);   // lower fan — splays slightly at the end
+      r(ctx, -4, -25, 2,  3, hc);   // top cap blending into hair on head
+    }
+
     ctx.restore();
   }
 
