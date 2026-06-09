@@ -633,6 +633,138 @@ KR.bg = (function () {
     piers(ctx, scroll);                                        // posts standing in the river
   }
 
+  // ---- Wooden arch gate (Act 2 — barracks interior) --------------------
+  // Heavy timber post-and-beam frame: the runner passes through doorways
+  // between barracks sections. Matches the dark-walnut pillar palette.
+  function woodArch(ctx, cx, gY) {
+    cx = Math.round(cx);
+    var S = "#281c0e", SL = "#3c2618", SD = "#140a04";
+    var PW = 10; // post width
+
+    // Left upright
+    ctx.fillStyle = S;  ctx.fillRect(cx - 38, 28, PW, gY - 28);
+    ctx.fillStyle = SL; ctx.fillRect(cx - 38, 28, 2, gY - 28);   // lit edge
+    ctx.fillStyle = SD; ctx.fillRect(cx - 30, 28, 2, gY - 28);   // shadow edge
+    ctx.fillStyle = SD; ctx.fillRect(cx - 40, gY - 4, PW + 4, 4); // footing
+
+    // Right upright
+    ctx.fillStyle = S;  ctx.fillRect(cx + 28, 28, PW, gY - 28);
+    ctx.fillStyle = SL; ctx.fillRect(cx + 28, 28, 2, gY - 28);
+    ctx.fillStyle = SD; ctx.fillRect(cx + 36, 28, 2, gY - 28);
+    ctx.fillStyle = SD; ctx.fillRect(cx + 26, gY - 4, PW + 4, 4);
+
+    // Main header beam with upswept end caps
+    ctx.fillStyle = S;  ctx.fillRect(cx - 48, 28, 96, 12);
+    ctx.fillStyle = SL; ctx.fillRect(cx - 48, 28, 96, 2);          // top highlight
+    ctx.fillStyle = SD; ctx.fillRect(cx - 48, 38, 96, 2);          // bottom shadow
+    ctx.fillStyle = S;  ctx.fillRect(cx - 52, 24, 6, 16);           // left end cap
+    ctx.fillStyle = S;  ctx.fillRect(cx + 46, 24, 6, 16);           // right end cap
+    ctx.fillStyle = SL; ctx.fillRect(cx - 52, 24, 6, 2);
+    ctx.fillStyle = SL; ctx.fillRect(cx + 46, 24, 6, 2);
+
+    // Bracket corbels where posts meet beam
+    ctx.fillStyle = SD;
+    ctx.fillRect(cx - 42, 40, 12, 4);  // left — horizontal
+    ctx.fillRect(cx - 42, 40, 4, 10); //        vertical
+    ctx.fillRect(cx + 30, 40, 12, 4);  // right — horizontal
+    ctx.fillRect(cx + 38, 40, 4, 10); //         vertical
+
+    // Lower crossrail (mortise-and-tenon joint style)
+    ctx.fillStyle = S;  ctx.fillRect(cx - 38, 58, 76, 6);
+    ctx.fillStyle = SL; ctx.fillRect(cx - 38, 58, 76, 1);
+    ctx.fillStyle = SD; ctx.fillRect(cx - 38, 63, 76, 1);
+
+    // Hanging wooden plaque in centre
+    ctx.fillStyle = "#3c2612"; ctx.fillRect(cx - 12, 32, 24, 18);
+    ctx.fillStyle = SD;        ctx.fillRect(cx - 12, 32, 24, 1);
+    ctx.fillStyle = SD;        ctx.fillRect(cx - 12, 49, 24, 1);
+    ctx.fillStyle = "#52381a"; // engraved kanji-suggestion marks
+    ctx.fillRect(cx - 8, 36, 16, 2);
+    ctx.fillRect(cx - 6, 41, 12, 2);
+    ctx.fillRect(cx - 4, 46, 8, 1);
+  }
+
+  // ---- Stone arch gate (Act 3 — palace corridor) -----------------------
+  // Semi-circular masonry arch with pillar shafts, gold accent bands, and
+  // a dark passage — matches the palace column/stone-block palette.
+  function stoneArch(ctx, cx, gY) {
+    cx = Math.round(cx);
+    var S = "#1e1a30", SL = "#2c2844", SD = "#0e0c1e", G = "#c49430";
+    var archR = 26, SW = 14;   // inner radius, stone surround width
+    var archCY = 74;           // arc centre — crown sits at y ≈ 48
+
+    // Dark passage through the arch (drawn first, arch sits in front)
+    ctx.fillStyle = "#050310";
+    ctx.fillRect(cx - archR, 48, archR * 2, gY - 48);
+
+    // Outer highlight arc (top rim, 1 px lighter)
+    ctx.fillStyle = SL;
+    ctx.beginPath();
+    ctx.arc(cx, archCY, archR + SW + 1, Math.PI, 0);
+    ctx.lineTo(cx + archR + SW + 1, archCY);
+    ctx.arc(cx, archCY, archR + SW, 0, Math.PI, true);
+    ctx.closePath();
+    ctx.fill();
+
+    // Main stone arch body
+    ctx.fillStyle = S;
+    ctx.beginPath();
+    ctx.arc(cx, archCY, archR + SW, Math.PI, 0);
+    ctx.lineTo(cx + archR + SW, archCY);
+    ctx.arc(cx, archCY, archR + 2, 0, Math.PI, true);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner shadow arc (gives depth to the throat of the arch)
+    ctx.fillStyle = SD;
+    ctx.beginPath();
+    ctx.arc(cx, archCY, archR + 5, Math.PI, 0);
+    ctx.lineTo(cx + archR + 5, archCY);
+    ctx.arc(cx, archCY, archR + 2, 0, Math.PI, true);
+    ctx.closePath();
+    ctx.fill();
+
+    // Left pillar shaft below the haunch
+    ctx.fillStyle = SL; ctx.fillRect(cx - archR - SW, archCY, 2, gY - archCY);
+    ctx.fillStyle = S;  ctx.fillRect(cx - archR - SW + 2, archCY, SW - 4, gY - archCY);
+    ctx.fillStyle = SD; ctx.fillRect(cx - archR - 2, archCY, 2, gY - archCY);
+
+    // Right pillar shaft below the haunch
+    ctx.fillStyle = SL; ctx.fillRect(cx + archR, archCY, 2, gY - archCY);
+    ctx.fillStyle = S;  ctx.fillRect(cx + archR + 2, archCY, SW - 4, gY - archCY);
+    ctx.fillStyle = SD; ctx.fillRect(cx + archR + SW - 2, archCY, 2, gY - archCY);
+
+    // Stone course lines on pillar shafts
+    ctx.fillStyle = SD;
+    for (var py = archCY + 8; py < gY - 4; py += 10) {
+      ctx.fillRect(cx - archR - SW, py, SW, 1);
+      ctx.fillRect(cx + archR,      py, SW, 1);
+    }
+
+    // Capital at each pillar top — gold band accent
+    ctx.fillStyle = S; ctx.fillRect(cx - archR - SW - 2, archCY - 5, SW + 4, 6);
+    ctx.fillStyle = G; ctx.fillRect(cx - archR - SW - 1, archCY - 3, SW + 2, 2);
+    ctx.fillStyle = S; ctx.fillRect(cx + archR - 2, archCY - 5, SW + 4, 6);
+    ctx.fillStyle = G; ctx.fillRect(cx + archR - 1, archCY - 3, SW + 2, 2);
+
+    // Base moulding — gold band accent
+    ctx.fillStyle = S; ctx.fillRect(cx - archR - SW - 2, gY - 5, SW + 4, 5);
+    ctx.fillStyle = G; ctx.fillRect(cx - archR - SW - 1, gY - 4, SW + 2, 1);
+    ctx.fillStyle = S; ctx.fillRect(cx + archR - 2, gY - 5, SW + 4, 5);
+    ctx.fillStyle = G; ctx.fillRect(cx + archR - 1, gY - 4, SW + 2, 1);
+
+    // Gold keystone at the crown
+    ctx.fillStyle = G;  ctx.fillRect(cx - 6, 48, 12, 4);
+    ctx.fillStyle = SL; ctx.fillRect(cx - 8, 46, 16, 3);
+  }
+
+  // ---- Gate dispatcher: picks the right arch style for the current act --
+  function gate(ctx, cx, gY, act) {
+    if (act === 2) { woodArch(ctx, cx, gY); return; }
+    if (act === 3) { stoneArch(ctx, cx, gY); return; }
+    torii(ctx, cx, gY);
+  }
+
   // ---- Torii gate (level marker the runner passes through) -------------
   function torii(ctx, cx, gY) {
     cx = Math.round(cx);
@@ -921,7 +1053,7 @@ KR.bg = (function () {
   }
 
   return {
-    draw: draw, torii: torii, drawBoss: drawBoss, cut: cut,
+    draw: draw, gate: gate, torii: torii, drawBoss: drawBoss, cut: cut,
     WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_Y: GROUND_Y
   };
 })();
