@@ -836,7 +836,7 @@
       BG.draw(ctx, scrollX, runAct, elapsed);
       // torii gates sit between the scenery and the fighters, so the hero runs
       // through them (framed by the pillars, the lintel passing overhead).
-      for (var gi = 0; gi < gates.length; gi++) BG.gate(ctx, gates[gi].screenX, GROUND_Y, runAct);
+      for (var gi = 0; gi < gates.length; gi++) BG.gate(ctx, gates[gi].screenX, GROUND_Y, runAct, scrollX);
       enemies.sort(function (a, b) { return b.x - a.x; });
       for (var i = 0; i < enemies.length; i++) drawFoe(enemies[i]);
       drawPlayer();
