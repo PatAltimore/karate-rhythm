@@ -833,12 +833,19 @@ KR.bg = (function () {
     ctx.fillStyle = G;  ctx.fillRect(lx - 1, GROUND_Y - 5, 16, 1);
   }
 
-  function gate(ctx, cx, gY, act, scrollX) {
+  function gate(ctx, cx, gY, act) {
     cx = Math.round(cx);
-    // dep: how many pixels the far/left pillar lags behind the near/right pillar.
-    // Grows with total scroll so it's imperceptible at the start and prominent
-    // near the end of each act.
-    var dep = Math.min(12, Math.max(0, (scrollX || 0) * 0.05));
+    // dep: pixels the far/left pillar lags behind the near/right pillar.
+    //
+    // Gates spawn at x = WIDTH + 24 = 304.  As the gate scrolls leftward,
+    // (WIDTH + 24 - cx) grows from 0 → ~244.  Multiplying by a small factor
+    // gives a lag that INCREASES at a constant rate — i.e. the left pillar
+    // moves 8% SLOWER every frame than the right pillar, which is exactly
+    // what parallax looks like.  No cap until cx < 44 (well past the hero).
+    //
+    // Using cx instead of scrollX means the effect is self-contained and
+    // works identically at every act / checkpoint restart.
+    var dep = Math.max(0, (WIDTH + 24 - cx) * 0.08);
     if (act === 2) { woodArchLeftPost(ctx, cx, dep); woodArch(ctx, cx, gY, dep); return; }
     if (act === 3) { stoneArchLeftColumn(ctx, cx, dep); stoneArch(ctx, cx, gY, dep); return; }
     toriiLeftPillar(ctx, cx, dep); torii(ctx, cx, gY, dep);
