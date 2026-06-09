@@ -89,23 +89,33 @@ KR.sprites = (function () {
     r(ctx, -3, -22, 1, 2, k.hair);   // sideburn
     r(ctx,  2, -21, 1, 1, PAL.black);
 
-    // ARMS — dramatic counter-swing (opposite to the leading leg)
+    // ARMS — counter-swing, fists stay between belt (y=-12) and shoulder (y=-19).
     if (frame === 0) {
-      // A: front (right) arm LOW near hip, back (left) arm HIGH near chin
-      r(ctx,  3, -17, 2, 6, k.gi);    r(ctx,  3, -12, 2, 2, k.skin);
-      r(ctx, -5, -22, 2, 5, k.giSh);  r(ctx, -5, -18, 2, 2, k.skin);
+      // Right leg forward → LEFT arm forward (shoulder height), RIGHT arm back (belt)
+      r(ctx, -4, -18, 4, 2, k.giSh);  // left upper-arm: horizontal at shoulder
+      r(ctx, -1, -19, 2, 2, k.skin);  // left fist: shoulder height
+      r(ctx,  2, -18, 2, 2, k.gi);    // right upper-arm at shoulder
+      r(ctx,  3, -16, 2, 4, k.gi);    // right forearm: hangs down-back
+      r(ctx,  3, -12, 2, 2, k.skin);  // right fist: belt level
     } else if (frame === 1) {
-      // Transition: arms crossing through mid-level
-      r(ctx,  3, -20, 2, 5, k.gi);    r(ctx,  3, -15, 2, 2, k.skin);
-      r(ctx, -4, -19, 2, 4, k.giSh);  r(ctx, -4, -16, 2, 2, k.skin);
+      // Transition A→B: left descending, right rising (capped at shoulder)
+      r(ctx, -3, -18, 2, 4, k.giSh);  // left arm descending
+      r(ctx, -2, -14, 2, 2, k.skin);  // left fist mid-level
+      r(ctx,  2, -18, 3, 2, k.gi);    // right arm at shoulder
+      r(ctx,  3, -19, 2, 2, k.skin);  // right fist: shoulder height (no higher)
     } else if (frame === 2) {
-      // B: front (right) arm HIGH near chin, back (left) arm LOW near hip
-      r(ctx,  3, -22, 2, 5, k.gi);    r(ctx,  3, -18, 2, 2, k.skin);
-      r(ctx, -4, -17, 2, 6, k.giSh);  r(ctx, -4, -12, 2, 2, k.skin);
+      // Left leg forward → RIGHT arm forward (shoulder height), LEFT arm back (belt)
+      r(ctx,  0, -18, 4, 2, k.gi);    // right upper-arm: horizontal at shoulder
+      r(ctx,  2, -19, 2, 2, k.skin);  // right fist: shoulder height
+      r(ctx, -4, -18, 2, 2, k.giSh);  // left upper-arm at shoulder
+      r(ctx, -4, -16, 2, 4, k.giSh);  // left forearm: hangs down-back
+      r(ctx, -4, -12, 2, 2, k.skin);  // left fist: belt level
     } else {
-      // Transition (other side)
-      r(ctx,  3, -19, 2, 4, k.gi);    r(ctx,  3, -16, 2, 2, k.skin);
-      r(ctx, -5, -20, 2, 5, k.giSh);  r(ctx, -5, -16, 2, 2, k.skin);
+      // Transition B→A: right descending, left rising (capped at shoulder)
+      r(ctx,  2, -18, 2, 4, k.gi);    // right arm descending
+      r(ctx,  2, -14, 2, 2, k.skin);  // right fist mid-level
+      r(ctx, -4, -18, 3, 2, k.giSh);  // left arm at shoulder
+      r(ctx, -3, -19, 2, 2, k.skin);  // left fist: shoulder height (no higher)
     }
 
     if (isFloat) ctx.restore();
@@ -125,8 +135,12 @@ KR.sprites = (function () {
       r(ctx, -3, -12, 7,  2, k.band);
       r(ctx, -3, -25, 7,  7, k.skin);  r(ctx, -3, -25, 7, 3, k.hair);
       r(ctx,  2, -21, 1,  1, PAL.black);
-      r(ctx,  2, -19, 2,  4, k.gi);    r(ctx,  2, -16, 2, 2, k.skin);   // arms chambered
-      r(ctx, -4, -20, 2,  5, k.giSh);  r(ctx, -4, -16, 2, 2, k.skin);
+      r(ctx,  3, -21, 2, 2, k.gi);    // front upper-arm (shoulder→elbow)
+      r(ctx,  4, -19, 2, 4, k.gi);    // front forearm (elbow bends outward)
+      r(ctx,  4, -15, 2, 2, k.skin);  // front fist
+      r(ctx, -5, -21, 2, 2, k.giSh); // back upper-arm
+      r(ctx, -6, -19, 2, 4, k.giSh); // back forearm (elbow bends outward)
+      r(ctx, -6, -15, 2, 2, k.skin); // back fist
 
     } else if (phase < 0.65) {
       // EXTENSION: full kick — torso reclined, leg thrust
@@ -139,10 +153,9 @@ KR.sprites = (function () {
       r(ctx,  1, -20, 1, 1, PAL.black);
       r(ctx,  0, -11, 11, 3, k.gi);    r(ctx,  0, -11, 11, 1, k.giSh);
       r(ctx, 10, -12,  5, 3, PAL.black);
-      r(ctx,  0, -16,  4, 2, k.gi);    r(ctx,  4, -16, 2, 2, k.skin);
-      r(ctx, -6, -15,  3, 2, k.giSh);  r(ctx, -7, -15, 2, 2, k.skin);
-      r(ctx,  6, -16,  6, 1, k.giSh);  // speed lines
-      r(ctx,  7,  -7,  6, 1, k.giSh);
+      r(ctx,  3, -17, 2, 2, k.giSh);  // front arm: horizontal, giSh contrasts against gi torso
+      r(ctx,  5, -17, 2, 2, k.skin);  // front fist at arm tip
+      r(ctx, -6, -15,  3, 2, k.giSh);  r(ctx, -8, -15, 2, 2, k.skin);  // back arm, fist at tip
 
     } else {
       // RETRACT: knee still forward, shin pulling back, torso returning upright
@@ -154,8 +167,12 @@ KR.sprites = (function () {
       r(ctx, -3, -12, 7,  2, k.band);
       r(ctx, -3, -25, 7,  7, k.skin);  r(ctx, -3, -25, 7, 3, k.hair);
       r(ctx,  2, -21, 1,  1, PAL.black);
-      r(ctx,  3, -18, 2,  5, k.gi);    r(ctx,  3, -14, 2, 2, k.skin);
-      r(ctx, -4, -18, 2,  4, k.giSh);  r(ctx, -4, -15, 2, 2, k.skin);
+      r(ctx,  3, -20, 2, 2, k.gi);    // front upper-arm (shoulder→elbow)
+      r(ctx,  4, -18, 2, 4, k.gi);    // front forearm (elbow bends outward)
+      r(ctx,  4, -14, 2, 2, k.skin);  // front fist
+      r(ctx, -5, -20, 2, 2, k.giSh); // back upper-arm
+      r(ctx, -6, -18, 2, 4, k.giSh); // back forearm
+      r(ctx, -6, -14, 2, 2, k.skin); // back fist
     }
   }
 
@@ -314,10 +331,9 @@ KR.sprites = (function () {
     // Drawn last so it overlaps the torso behind the head.
     if (opts.kit && opts.kit.longhair) {
       var hc = k.hair;
-      r(ctx, -5, -23, 3, 16, hc);   // main fall behind the head/back
-      r(ctx, -6, -20, 2, 11, hc);   // outer wisp
-      r(ctx, -5, -7,  4,  5, hc);   // lower fan — splays slightly at the end
-      r(ctx, -4, -25, 2,  3, hc);   // top cap blending into hair on head
+      r(ctx, -4, -25, 2,  3, hc);   // top cap on head
+      r(ctx, -5, -23, 3,  8, hc);   // main fall — mid-back length (halved)
+      r(ctx, -6, -20, 2,  5, hc);   // outer wisp (halved)
     }
 
     ctx.restore();
