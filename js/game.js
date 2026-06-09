@@ -159,9 +159,7 @@
   var canvas, ctx, hud, popupLayer, scoreEl, comboEl, fillEl, beatDot, levelEl, muteBtn;
   var actEl, bossHud, bossFill, titleEl, gameoverEl, victoryEl, cutsceneEl, cutsceneTextEl;
 
-  var state = "title";            // title | playing | dying | boss | victory | over
-  var dyingT = 0;
-  var DIE_ANIM = 1.1;            // seconds for the fall animation before showing game-over
+  var state = "title";            // title | playing | boss | victory | over
   var paused = false;
   var viewScale = 1;
 
@@ -642,12 +640,6 @@
       }
       return;   // everything else is frozen during a cut-scene
     }
-    if (state === "dying") {
-      dyingT += dt;
-      player.runPhase += dt * 2; // slow wobble while falling
-      if (dyingT >= DIE_ANIM) finaliseGameOver();
-      return;
-    }
     var playing = state === "playing";
     var curBeat = (audio.ready && (playing || state === "boss")) ? audio.getCurrentBeat() : 0;
     var scrollMul = playing ? levelConfig(effLevel(curBeat)).scrollMul : 1;
@@ -814,20 +806,6 @@
   }
 
   function drawPlayer() {
-    if (state === "dying") {
-      // Phase 0-0.2: stagger in hit pose; 0.2-1.0: topple forward to ground.
-      var phase = Math.min(1, dyingT / DIE_ANIM);
-      var rot = phase > 0.2 ? Math.min(1, (phase - 0.2) / 0.7) * (Math.PI * 0.48) : 0;
-      S.shadow(ctx, PLAYER_X, GROUND_Y, 16 + rot * 8, 0.22);
-      ctx.save();
-      ctx.translate(Math.round(PLAYER_X), Math.round(GROUND_Y));
-      ctx.translate(0, -4);   // pivot near ankles
-      ctx.rotate(rot);
-      ctx.translate(0, 4);
-      S.fighter(ctx, 0, 0, { facing: 1, pose: "hit", kit: PLAYER_KIT });
-      ctx.restore();
-      return;
-    }
     var yOff = 0, pose = "run", kickPhase = 0;
     if (player.kicking) {
       pose = "kick";
@@ -867,8 +845,6 @@
       drawPlayer();
       for (var s = 0; s < sparks.length; s++) S.spark(ctx, sparks[s].x, sparks[s].y, sparks[s].t, sparks[s].color);
       for (var ff = 0; ff < feathers.length; ff++) drawFeather(feathers[ff]);
-      // Foreground gate pillars — drawn OVER heroes so they pass between columns
-      for (var gf = 0; gf < gates.length; gf++) BG.gateFore(ctx, gates[gf].screenX, GROUND_Y, runAct);
       ctx.globalAlpha = 1;
     }
     ctx.restore();
@@ -959,16 +935,11 @@
   }
 
   function gameOver() {
-    if (state === "over" || state === "dying") return;
-    state = "dying";
-    dyingT = 0;
+    if (state === "over") return;
+    state = "over";
     strength = 0;
     audio.stop();
     if (audio.setBossMode) audio.setBossMode(false);
-  }
-
-  function finaliseGameOver() {
-    state = "over";
     audio.playGameOver();
 
     best = Math.max(best, score);

@@ -636,37 +636,31 @@ KR.bg = (function () {
   // ---- Wooden arch gate (Act 2 — barracks interior) --------------------
   // Heavy timber post-and-beam frame: the runner passes through doorways
   // between barracks sections. Matches the dark-walnut pillar palette.
-  function woodArch(ctx, cx, gY, dep, depF) {
+  function woodArch(ctx, cx, gY) {
     cx = Math.round(cx);
-    dep = dep || 0; depF = depF || 0;
     var S = "#281c0e", SL = "#3c2618", SD = "#140a04";
+    var PW = 10; // post width
 
-    // Main header beam — left extent shifts with dep, right stays fixed
-    var beamL = cx + dep - 48, beamR = cx + 52, beamW = beamR - beamL;
-    ctx.fillStyle = S;  ctx.fillRect(beamL, 28, beamW, 12);
-    ctx.fillStyle = SL; ctx.fillRect(beamL, 28, beamW, 2);   // top highlight
-    ctx.fillStyle = SD; ctx.fillRect(beamL, 38, beamW, 2);   // bottom shadow
-    // Left end cap at far depth, right end cap at near
-    ctx.fillStyle = S;  ctx.fillRect(cx + dep - 52, 24, 6, 16);
-    ctx.fillStyle = S;  ctx.fillRect(cx + 46, 24, 6, 16);
-    ctx.fillStyle = SL; ctx.fillRect(cx + dep - 52, 24, 6, 2);
+    // Left upright
+    ctx.fillStyle = S;  ctx.fillRect(cx - 38, 28, PW, gY - 28);
+    ctx.fillStyle = SL; ctx.fillRect(cx - 38, 28, 2, gY - 28);   // lit edge
+    ctx.fillStyle = SD; ctx.fillRect(cx - 30, 28, 2, gY - 28);   // shadow edge
+    ctx.fillStyle = SD; ctx.fillRect(cx - 40, gY - 4, PW + 4, 4); // footing
+
+    // Right upright
+    ctx.fillStyle = S;  ctx.fillRect(cx + 28, 28, PW, gY - 28);
+    ctx.fillStyle = SL; ctx.fillRect(cx + 28, 28, 2, gY - 28);
+    ctx.fillStyle = SD; ctx.fillRect(cx + 36, 28, 2, gY - 28);
+    ctx.fillStyle = SD; ctx.fillRect(cx + 26, gY - 4, PW + 4, 4);
+
+    // Main header beam with upswept end caps
+    ctx.fillStyle = S;  ctx.fillRect(cx - 48, 28, 96, 12);
+    ctx.fillStyle = SL; ctx.fillRect(cx - 48, 28, 96, 2);          // top highlight
+    ctx.fillStyle = SD; ctx.fillRect(cx - 48, 38, 96, 2);          // bottom shadow
+    ctx.fillStyle = S;  ctx.fillRect(cx - 52, 24, 6, 16);           // left end cap
+    ctx.fillStyle = S;  ctx.fillRect(cx + 46, 24, 6, 16);           // right end cap
+    ctx.fillStyle = SL; ctx.fillRect(cx - 52, 24, 6, 2);
     ctx.fillStyle = SL; ctx.fillRect(cx + 46, 24, 6, 2);
-
-    // 3-D top face: skewed parallelogram.
-    // Near (front) bottom edge centred on cx-depF (foreground, races left).
-    // Far (back) top edge centred on cx+dep (background, lags right).
-    var ST = "#4a2c14"; // top-lit wood
-    var HS = 56, SLOPE = 6, NEARY = 23, FARY = NEARY - SLOPE;
-    ctx.fillStyle = ST;
-    ctx.beginPath();
-    ctx.moveTo(cx - depF - HS, NEARY);   // near bottom-left
-    ctx.lineTo(cx - depF + HS, NEARY);   // near bottom-right
-    ctx.lineTo(cx + dep  + HS, FARY);    // far top-right
-    ctx.lineTo(cx + dep  - HS, FARY);    // far top-left
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = SL; ctx.fillRect(cx - depF - HS, NEARY - 1, HS * 2, 1); // near edge
-    ctx.fillStyle = SD; ctx.fillRect(cx + dep  - HS, FARY,      HS * 2, 1); // far edge
 
     // Bracket corbels where posts meet beam
     ctx.fillStyle = SD;
@@ -693,18 +687,17 @@ KR.bg = (function () {
   // ---- Stone arch gate (Act 3 — palace corridor) -----------------------
   // Semi-circular masonry arch with pillar shafts, gold accent bands, and
   // a dark passage — matches the palace column/stone-block palette.
-  function stoneArch(ctx, cx, gY, dep, depF) {
+  function stoneArch(ctx, cx, gY) {
     cx = Math.round(cx);
-    dep = dep || 0; depF = depF || 0;
     var S = "#1e1a30", SL = "#2c2844", SD = "#0e0c1e", G = "#c49430";
-    var archR = 26, SW = 14;
+    var archR = 26, SW = 14;   // inner radius, stone surround width
     var archCY = 74;           // arc centre — crown sits at y ≈ 48
 
-    // Dark passage
+    // Dark passage through the arch (drawn first, arch sits in front)
     ctx.fillStyle = "#050310";
     ctx.fillRect(cx - archR, 48, archR * 2, gY - 48);
 
-    // Arch (arc paths centred on near cx — the stone arch is the near face)
+    // Outer highlight arc (top rim, 1 px lighter)
     ctx.fillStyle = SL;
     ctx.beginPath();
     ctx.arc(cx, archCY, archR + SW + 1, Math.PI, 0);
@@ -712,6 +705,8 @@ KR.bg = (function () {
     ctx.arc(cx, archCY, archR + SW, 0, Math.PI, true);
     ctx.closePath();
     ctx.fill();
+
+    // Main stone arch body
     ctx.fillStyle = S;
     ctx.beginPath();
     ctx.arc(cx, archCY, archR + SW, Math.PI, 0);
@@ -719,6 +714,8 @@ KR.bg = (function () {
     ctx.arc(cx, archCY, archR + 2, 0, Math.PI, true);
     ctx.closePath();
     ctx.fill();
+
+    // Inner shadow arc (gives depth to the throat of the arch)
     ctx.fillStyle = SD;
     ctx.beginPath();
     ctx.arc(cx, archCY, archR + 5, Math.PI, 0);
@@ -727,176 +724,72 @@ KR.bg = (function () {
     ctx.closePath();
     ctx.fill();
 
-    // Keystone
+    // Left pillar shaft below the haunch
+    ctx.fillStyle = SL; ctx.fillRect(cx - archR - SW, archCY, 2, gY - archCY);
+    ctx.fillStyle = S;  ctx.fillRect(cx - archR - SW + 2, archCY, SW - 4, gY - archCY);
+    ctx.fillStyle = SD; ctx.fillRect(cx - archR - 2, archCY, 2, gY - archCY);
+
+    // Right pillar shaft below the haunch
+    ctx.fillStyle = SL; ctx.fillRect(cx + archR, archCY, 2, gY - archCY);
+    ctx.fillStyle = S;  ctx.fillRect(cx + archR + 2, archCY, SW - 4, gY - archCY);
+    ctx.fillStyle = SD; ctx.fillRect(cx + archR + SW - 2, archCY, 2, gY - archCY);
+
+    // Stone course lines on pillar shafts
+    ctx.fillStyle = SD;
+    for (var py = archCY + 8; py < gY - 4; py += 10) {
+      ctx.fillRect(cx - archR - SW, py, SW, 1);
+      ctx.fillRect(cx + archR,      py, SW, 1);
+    }
+
+    // Capital at each pillar top — gold band accent
+    ctx.fillStyle = S; ctx.fillRect(cx - archR - SW - 2, archCY - 5, SW + 4, 6);
+    ctx.fillStyle = G; ctx.fillRect(cx - archR - SW - 1, archCY - 3, SW + 2, 2);
+    ctx.fillStyle = S; ctx.fillRect(cx + archR - 2, archCY - 5, SW + 4, 6);
+    ctx.fillStyle = G; ctx.fillRect(cx + archR - 1, archCY - 3, SW + 2, 2);
+
+    // Base moulding — gold band accent
+    ctx.fillStyle = S; ctx.fillRect(cx - archR - SW - 2, gY - 5, SW + 4, 5);
+    ctx.fillStyle = G; ctx.fillRect(cx - archR - SW - 1, gY - 4, SW + 2, 1);
+    ctx.fillStyle = S; ctx.fillRect(cx + archR - 2, gY - 5, SW + 4, 5);
+    ctx.fillStyle = G; ctx.fillRect(cx + archR - 1, gY - 4, SW + 2, 1);
+
+    // Gold keystone at the crown
     ctx.fillStyle = G;  ctx.fillRect(cx - 6, 48, 12, 4);
     ctx.fillStyle = SL; ctx.fillRect(cx - 8, 46, 16, 3);
-
-    // 3-D entablature slab: skewed parallelogram.
-    // Near (front) bottom edge centred on cx-depF (foreground, races left).
-    // Far (back) top edge centred on cx+dep (background, lags right).
-    var HS = archR + SW + 4, SLOPE = 6, NEARY = 45, FARY = NEARY - SLOPE;
-    ctx.fillStyle = SL;
-    ctx.beginPath();
-    ctx.moveTo(cx - depF - HS, NEARY);   // near bottom-left
-    ctx.lineTo(cx - depF + HS, NEARY);   // near bottom-right
-    ctx.lineTo(cx + dep  + HS, FARY);    // far top-right
-    ctx.lineTo(cx + dep  - HS, FARY);    // far top-left
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = S;  ctx.fillRect(cx - depF - HS, NEARY - 1, HS * 2, 1);  // near edge
-    ctx.fillStyle = SD; ctx.fillRect(cx + dep  - HS, FARY,      HS * 2, 1);  // far edge
-    ctx.fillStyle = G;  ctx.fillRect(cx - 8,          FARY + 1,  16,    3);   // gold keystone cap
   }
 
-  // ---- Gate dispatcher: background layer (arch header + FAR/LEFT pillar) -
-  // The left pillar is drawn full-height BEFORE the hero so the hero appears
-  // to walk IN FRONT of it — it recedes as you enter the gate.
-  // The right (near/foreground) pillar is drawn separately after the hero.
-
-  // dep = parallax depth offset in pixels: the far/background left pillar lags
-  // this many px to the right compared with the near/foreground right pillar.
-  // dep grows with scrollX so early gates have a hint of depth, late-game gates
-  // have the full cabinet-projection separation.
-
-  function toriiLeftPillar(ctx, cx, dep) {
-    var V = "#b5402c", VD = "#7a2418", VL = "#cf5a40", K = "#2a0f0a";
-    var px = cx + dep - 33; // shifted right by depth offset
-    ctx.fillStyle = V;  ctx.fillRect(px, 0, 7, HEIGHT);
-    ctx.fillStyle = VD; ctx.fillRect(px, 0, 2, HEIGHT);
-    ctx.fillStyle = VL; ctx.fillRect(px + 5, 0, 1, HEIGHT);
-    ctx.fillStyle = K;  ctx.fillRect(px - 1, GROUND_Y - 2, 9, 2);
-  }
-
-  function woodArchLeftPost(ctx, cx, dep) {
-    var S = "#281c0e", SL = "#3c2618", SD = "#140a04";
-    var lx = cx + dep - 38; // shifted right by depth offset
-    ctx.fillStyle = S;  ctx.fillRect(lx, 0, 10, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(lx, 0, 2, HEIGHT);
-    ctx.fillStyle = SL; ctx.fillRect(lx + 8, 0, 1, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(lx - 2, GROUND_Y - 4, 14, 4);
-  }
-
-  function stoneArchLeftColumn(ctx, cx, dep) {
-    var S = "#1e1a30", SL = "#2c2844", SD = "#0e0c1e", G = "#c49430";
-    var lx = cx + dep - 40; // shifted right by depth offset
-    var py;
-    ctx.fillStyle = S;  ctx.fillRect(lx, 0, 14, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(lx, 0, 2, HEIGHT);
-    ctx.fillStyle = SL; ctx.fillRect(lx + 12, 0, 1, HEIGHT);
-    ctx.fillStyle = G;
-    for (py = 10; py < HEIGHT - 4; py += 26) ctx.fillRect(lx + 2, py, 10, 1);
-    ctx.fillStyle = SD; ctx.fillRect(lx - 2, GROUND_Y - 6, 18, 6);
-    ctx.fillStyle = G;  ctx.fillRect(lx - 1, GROUND_Y - 5, 16, 1);
-  }
-
+  // ---- Gate dispatcher: picks the right arch style for the current act --
   function gate(ctx, cx, gY, act) {
-    cx = Math.round(cx);
-    // Two independent parallax offsets derived from how far the gate has
-    // travelled since spawning at WIDTH+24=304:
-    //   depB — background LEFT pillar lags RIGHTWARD  (slow, 15 % of travel)
-    //   depF — foreground RIGHT pillar leads LEFTWARD  (fast, 25 % of travel)
-    // Both grow linearly so each pillar moves at a constant but DIFFERENT
-    // speed every frame, producing unmistakable parallax.
-    var travel = Math.max(0, WIDTH + 24 - cx);
-    var depB = travel * 0.15;   // background lags right
-    var depF = travel * 0.25;   // foreground leads left (passed to arch for slab)
-    if (act === 2) { woodArchLeftPost(ctx, cx, depB); woodArch(ctx, cx, gY, depB, depF); return; }
-    if (act === 3) { stoneArchLeftColumn(ctx, cx, depB); stoneArch(ctx, cx, gY, depB, depF); return; }
-    toriiLeftPillar(ctx, cx, depB); torii(ctx, cx, gY, depB, depF);
-  }
-
-  // ---- Gate foreground layer: only the NEAR/RIGHT pillar over the hero ----
-  // Drawn AFTER the hero so it appears in front — hero is sandwiched between
-  // the far-left column (background) and the near-right column (foreground).
-  // The right pillar fades in as the gate approaches (cx 200→120) so it
-  // materialises naturally before the hero reaches the opening.
-
-  function toriiFore(ctx, cx, depF) {
-    // Right post races left by depF — position is cx - depF + 30 (centre)
-    var V = "#b5402c", VD = "#7a2418", VL = "#cf5a40", K = "#2a0f0a";
-    var px = cx - depF + 27; // left edge of right post
-    ctx.fillStyle = V;  ctx.fillRect(px, 0, 7, HEIGHT);
-    ctx.fillStyle = VL; ctx.fillRect(px, 0, 1, HEIGHT);
-    ctx.fillStyle = VD; ctx.fillRect(px + 4, 0, 2, HEIGHT);
-    ctx.fillStyle = K;  ctx.fillRect(px - 1, GROUND_Y - 2, 9, 2);
-  }
-
-  function woodArchFore(ctx, cx, depF) {
-    // Right post races left by depF — position is cx - depF + 33 (centre)
-    var S = "#281c0e", SL = "#3c2618", SD = "#140a04";
-    var rx = cx - depF + 28; // left edge
-    ctx.fillStyle = S;  ctx.fillRect(rx, 0, 10, HEIGHT);
-    ctx.fillStyle = SL; ctx.fillRect(rx, 0, 1, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(rx + 8, 0, 2, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(rx - 2, GROUND_Y - 4, 14, 4);
-  }
-
-  function stoneArchFore(ctx, cx, depF) {
-    // Right column races left by depF — position is cx - depF + 33 (centre)
-    var S = "#1e1a30", SL = "#2c2844", SD = "#0e0c1e", G = "#c49430";
-    var rx = cx - depF + 26; // left edge
-    var py;
-    ctx.fillStyle = S;  ctx.fillRect(rx, 0, 14, HEIGHT);
-    ctx.fillStyle = SL; ctx.fillRect(rx, 0, 1, HEIGHT);
-    ctx.fillStyle = SD; ctx.fillRect(rx + 12, 0, 2, HEIGHT);
-    ctx.fillStyle = G;
-    for (py = 10; py < HEIGHT - 4; py += 26) ctx.fillRect(rx + 2, py, 10, 1);
-    ctx.fillStyle = SD; ctx.fillRect(rx - 2, GROUND_Y - 6, 18, 6);
-    ctx.fillStyle = G;  ctx.fillRect(rx - 1, GROUND_Y - 5, 16, 1);
-  }
-
-  // Foreground dispatcher — right pillar only, drawn OVER the hero.
-  // depF makes the right pillar race LEFT faster than the gate centre so it
-  // visibly overtakes the hero before the background pillar arrives.
-  function gateFore(ctx, cx, gY, act) {
-    cx = Math.round(cx);
-    if (cx < -80 || cx > WIDTH + 20) return;
-    var alpha = Math.max(0, Math.min(1, (220 - cx) / 80));
-    if (alpha <= 0) return;
-    var depF = Math.max(0, WIDTH + 24 - cx) * 0.25;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    if (act === 2) { woodArchFore(ctx, cx, depF); }
-    else if (act === 3) { stoneArchFore(ctx, cx, depF); }
-    else { toriiFore(ctx, cx, depF); }
-    ctx.restore();
+    if (act === 2) { woodArch(ctx, cx, gY); return; }
+    if (act === 3) { stoneArch(ctx, cx, gY); return; }
+    torii(ctx, cx, gY);
   }
 
   // ---- Torii gate (level marker the runner passes through) -------------
-  function torii(ctx, cx, gY, dep, depF) {
+  function torii(ctx, cx, gY) {
     cx = Math.round(cx);
-    dep = dep || 0; depF = depF || 0;
     var V = "#b5402c", VD = "#7a2418", VL = "#cf5a40", K = "#2a0f0a";
     var top = 50;
 
-    // nuki (lower tie beam) — left end shifts with dep, right stays fixed
-    var nukiL = cx + dep - 40, nukiR = cx + 40, nukiW = nukiR - nukiL;
-    ctx.fillStyle = V;  ctx.fillRect(nukiL, top + 18, nukiW, 5);
-    ctx.fillStyle = VD; ctx.fillRect(nukiL, top + 21, nukiW, 2);
+    function pillar(px) {
+      ctx.fillStyle = V;  ctx.fillRect(px - 3, top + 6, 7, gY - (top + 6));
+      ctx.fillStyle = VD; ctx.fillRect(px - 3, top + 6, 2, gY - (top + 6));
+      ctx.fillStyle = VL; ctx.fillRect(px + 3, top + 6, 1, gY - (top + 6));
+      ctx.fillStyle = K;  ctx.fillRect(px - 4, gY - 2, 9, 2); // footing
+    }
+    pillar(cx - 30);
+    pillar(cx + 30);
 
-    // kasagi (top lintel) — left extent shifts with dep, right stays fixed
-    var kasL = cx + dep - 46, kasR = cx + 46, kasW = kasR - kasL;
-    ctx.fillStyle = K;  ctx.fillRect(kasL, top - 1, kasW, 1);
-    ctx.fillStyle = V;  ctx.fillRect(kasL, top, kasW, 7);
-    ctx.fillStyle = VL; ctx.fillRect(kasL, top, kasW, 1);
-    // upswept end caps: left at far depth, right at near
-    ctx.fillStyle = V;  ctx.fillRect(cx + dep - 49, top - 2, 4, 9);
-    ctx.fillStyle = V;  ctx.fillRect(cx + 45, top - 2, 4, 9);
+    // nuki (lower tie beam) pierces the pillars
+    ctx.fillStyle = V;  ctx.fillRect(cx - 40, top + 18, 80, 5);
+    ctx.fillStyle = VD; ctx.fillRect(cx - 40, top + 21, 80, 2);
 
-    // 3-D top face of kasagi: skewed parallelogram.
-    // Near (front) bottom edge centred on cx-depF (foreground, races left).
-    // Far (back) top edge centred on cx+dep (background, lags right).
-    var VT = "#d96545", HS = 54, SLOPE = 7, NEARY = top - 1, FARY = top - 1 - SLOPE;
-    ctx.fillStyle = VT;
-    ctx.beginPath();
-    ctx.moveTo(cx - depF - HS, NEARY);   // near bottom-left
-    ctx.lineTo(cx - depF + HS, NEARY);   // near bottom-right
-    ctx.lineTo(cx + dep  + HS, FARY);    // far top-right
-    ctx.lineTo(cx + dep  - HS, FARY);    // far top-left
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = VL; ctx.fillRect(cx - depF - HS, NEARY - 1, HS * 2, 1); // near edge
-    ctx.fillStyle = K;  ctx.fillRect(cx + dep  - HS, FARY,      HS * 2, 1); // far edge
+    // kasagi (top lintel) with upswept ends
+    ctx.fillStyle = K;  ctx.fillRect(cx - 46, top - 1, 92, 1);
+    ctx.fillStyle = V;  ctx.fillRect(cx - 46, top, 92, 7);
+    ctx.fillStyle = VL; ctx.fillRect(cx - 46, top, 92, 1);
+    ctx.fillStyle = V;  ctx.fillRect(cx - 49, top - 2, 4, 9);
+    ctx.fillRect(cx + 45, top - 2, 4, 9);
 
     // gakuzuka (centre plaque)
     ctx.fillStyle = VD; ctx.fillRect(cx - 5, top + 9, 10, 8);
@@ -993,11 +886,11 @@ KR.bg = (function () {
       ctx.fillStyle = roof;
       ctx.fillRect(cx - hw - 3, y - 1, w + 6, 2);
       ctx.fillRect(cx - hw - 4, y, 2, 1); ctx.fillRect(cx + hw + 2, y, 2, 1);
-      // upswept horn finials at each eave corner (oni-gawara style)
-      ctx.fillRect(cx - hw - 5, y - 2, 1, 2);   // left horn shaft
-      ctx.fillRect(cx - hw - 6, y - 3, 1, 1);   // left horn tip (angled out)
-      ctx.fillRect(cx + hw + 4, y - 2, 1, 2);   // right horn shaft
-      ctx.fillRect(cx + hw + 5, y - 3, 1, 1);   // right horn tip
+      // upswept horn finials at each eave corner
+      ctx.fillRect(cx - hw - 5, y - 2, 1, 2);
+      ctx.fillRect(cx - hw - 6, y - 3, 1, 1);
+      ctx.fillRect(cx + hw + 4, y - 2, 1, 2);
+      ctx.fillRect(cx + hw + 5, y - 3, 1, 1);
       ctx.fillStyle = c; ctx.fillRect(cx - hw, y, w, Math.round(th));
       ctx.fillStyle = lit;
       ctx.fillRect(cx - 2, y + Math.round(th * 0.4), 2, 2);
@@ -1122,111 +1015,36 @@ KR.bg = (function () {
       var hx = -12 + Math.min(1, t / 2.2) * 72;                // hero strides in
       SP.fighter(ctx, hx, gy, { facing: 1, pose: t < 2.2 ? "run" : "idle", phase: t * 1.6 });
     } else if (scene === "cliff") {
-      // Hero crests the clifftop and steps onto the palace approach road.
-      // Full dusk sky + mountain panorama fill the background; the Act-1
-      // wooden bridge road stretches to the right with the palace ahead.
-      // The rocky ledge at the left edge shows the sheer height climbed.
-
-      var edgeX = 46; // x where rocky cliff top meets the wooden bridge
-
-      // Dusk sky across the full frame
+      // Hero scales a sheer cliff face to reach the palace road above.
+      // Left strip: dusk sky + bridge ledge the hero is climbing up to.
+      // Right: dark rock face.
       cutSky(ctx, "dusk");
-
-      // Mountain panorama — static, hero has arrived and paused
-      ridge(ctx, 0, 0, 100, 24, 54, "#3b2a55", 0);   // hazy far range
-      ridge(ctx, 0, 0, 126, 18, 38, "#271e3c", 40);   // near range
-
-      // Palace in the far distance — the goal, just visible ahead on the right
-      cutCastle(ctx, 222, 134, 1.8);
-
-      // ---- Bridge road from edgeX across the screen ----------------------
-      var bdg = ctx.createLinearGradient(0, gy, 0, gy + 12);
-      bdg.addColorStop(0, "#7a5630"); bdg.addColorStop(1, "#553b20");
-      ctx.fillStyle = bdg;
-      ctx.fillRect(edgeX, gy, WIDTH - edgeX, 12);
+      var cEdge = 66;
+      // cliff face (fills right side of screen)
+      ctx.fillStyle = "#1c1530";
+      ctx.fillRect(cEdge, 0, WIDTH - cEdge, HEIGHT);
+      // rocky strata texture
+      ctx.fillStyle = "#2a2046";
+      var strata = [7, 24, 40, 57, 74, 91, 108, 124, 140];
+      for (var si = 0; si < strata.length; si++) {
+        ctx.fillRect(cEdge + 6 + (si % 3) * 12, strata[si], 18 + (si * 11) % 36, 1);
+      }
+      ctx.fillStyle = "#342d54"; // lighter highlight stripe mid-cliff
+      ctx.fillRect(cEdge + 22, 30, 10, HEIGHT - 30);
+      ctx.fillStyle = "#0e0b1a"; // deep shadow crack at the edge
+      ctx.fillRect(cEdge - 3, 0, 4, HEIGHT);
+      // Bridge platform ledge at the top left (where the hero arrives)
+      ctx.fillStyle = "#7a5630";
+      ctx.fillRect(0, gy, cEdge - 2, 12);
       ctx.fillStyle = "#a8763e";
-      ctx.fillRect(edgeX, gy, WIDTH - edgeX, 1); // sunlit top edge
-      // Plank seams + grain highlights
-      for (var bpx = edgeX; bpx < WIDTH; bpx += 11) {
-        ctx.fillStyle = "#3a2814"; ctx.fillRect(bpx, gy, 1, 12);
-        ctx.fillStyle = "#8a6236"; ctx.fillRect(bpx + 2, gy + 2, 1, 9);
-      }
-      // Front support beam
-      ctx.fillStyle = "#2e1f12";
-      ctx.fillRect(edgeX, gy + 12, WIDTH - edgeX, 5);
-
-      // River below the bridge — shows this is the same road from Act 1
-      var rwg = ctx.createLinearGradient(0, gy + 17, 0, HEIGHT);
-      rwg.addColorStop(0.0, "#6e5566");
-      rwg.addColorStop(0.4, "#3c4866");
-      rwg.addColorStop(1.0, "#1b2742");
-      ctx.fillStyle = rwg;
-      ctx.fillRect(edgeX, gy + 17, WIDTH - edgeX, HEIGHT - gy - 17);
-      ctx.fillStyle = "#b89080"; // water surface sheen
-      ctx.fillRect(edgeX, gy + 17, WIDTH - edgeX, 1);
-      // Ripples + sunset glint on the water
-      ctx.fillStyle = "#8a6f78";
-      ctx.fillRect(edgeX + 12, gy + 22, 28, 1);
-      ctx.fillRect(edgeX + 68, gy + 28, 22, 1);
-      ctx.fillRect(edgeX + 128, gy + 24, 30, 1);
-      ctx.fillStyle = "rgba(255,200,140,0.18)";
-      for (var wy = gy + 19; wy < HEIGHT; wy += 3) {
-        var ww = 8 + (wy % 5);
-        ctx.fillRect(Math.round(164 + Math.sin(wy * 1.2) * 7 - ww / 2), wy, ww, 1);
-      }
-
-      // ---- Cliff face below the rocky ledge (left side) ------------------
-      // Dark rock face visible below edgeX — conveys the sheer height climbed.
-      var cfg = ctx.createLinearGradient(0, gy + 4, 0, HEIGHT);
-      cfg.addColorStop(0, "#1c1830"); cfg.addColorStop(1, "#0a0814");
-      ctx.fillStyle = cfg;
-      ctx.fillRect(0, gy + 4, edgeX - 2, HEIGHT - gy - 4);
-      // Horizontal rock strata lines
-      ctx.fillStyle = "#2a264a";
-      var strs = [gy + 10, gy + 20, gy + 33, gy + 48, gy + 65];
-      for (var si = 0; si < strs.length; si++) {
-        ctx.fillRect(5 + (si % 3) * 9, strs[si], 10 + (si * 7) % 18, 1);
-      }
-      // Vertical crack running down the face
-      ctx.fillStyle = "#100e20";
-      ctx.fillRect(edgeX - 14, gy + 4, 2, HEIGHT - gy - 4);
-
-      // ---- Rocky cliff-top ledge surface (left of edgeX) ----------------
-      // Rough purple-grey stone where the hero hauls themselves over the lip.
-      ctx.fillStyle = "#2c2448";
-      ctx.fillRect(0, gy - 3, edgeX + 2, 7);    // ledge slab
-      ctx.fillStyle = "#3e3460";
-      ctx.fillRect(0, gy - 3, edgeX + 2, 1);    // dusk-lit top face
-      ctx.fillStyle = "#1a1630";
-      ctx.fillRect(0, gy + 4, edgeX - 2, 2);    // shadow under the lip
-      // Small surface chips for texture
-      ctx.fillStyle = "#4a4070";
-      ctx.fillRect(9, gy - 2, 5, 1);
-      ctx.fillRect(22, gy - 1, 7, 1);
-      ctx.fillRect(35, gy - 2, 4, 1);
-
-      // Thin shadow where cliff edge meets bridge — depth transition
-      ctx.fillStyle = "rgba(0,0,0,0.36)";
-      ctx.fillRect(edgeX - 3, 0, 5, HEIGHT);
-
-      // ---- Hero animation ------------------------------------------------
-      // Phase 1 (t < ARRIVE): hero rises up over the rocky ledge, pulling in
-      //   from below the cliff edge at the left.
-      // Phase 2 (t >= ARRIVE): hero strides forward along the bridge road.
-      var ARRIVE = 2.5;
-      if (t < ARRIVE) {
-        var cf = t / ARRIVE;
-        var ce = 1 - (1 - cf) * (1 - cf); // ease-out
-        // Rises from 34 px below ground up through the ledge, arrives at gy
-        var hcy = Math.round(gy + 34 - 36 * ce);
-        SP.fighter(ctx, edgeX - 6, hcy, { facing: 1, pose: "run", phase: t * 2.8 });
-      } else {
-        // Now on the bridge, striding toward the palace
-        var wp = Math.min(1, (t - ARRIVE) / 1.6);
-        var we = wp * (2 - wp); // ease-out
-        SP.fighter(ctx, Math.round(edgeX + 4 + we * 52), gy,
-                   { facing: 1, pose: "run", phase: t * 1.6 });
-      }
+      ctx.fillRect(0, gy, cEdge - 2, 1);
+      for (var cpx = -2; cpx < cEdge; cpx += 11)
+        ctx.fillRect(Math.round(cpx), gy, 1, 12);
+      // Hero climbs from below the screen up to platform height
+      var climbFrac = Math.min(1, t / 3.8);
+      var climbEase = 1 - (1 - climbFrac) * (1 - climbFrac); // ease-out
+      var hcy = Math.round(HEIGHT + 14 - (HEIGHT + 14 - gy) * climbEase);
+      SP.fighter(ctx, cEdge - 10, hcy, { facing: 1, pose: "run", phase: t * 2.4 });
     } else if (scene === "dawn") {
       cutSky(ctx, "dawn");
       cutMoon(ctx, 150, 150 - Math.min(1, t / 2.6) * 92, 18, true); // sun rises
@@ -1240,7 +1058,7 @@ KR.bg = (function () {
   }
 
   return {
-    draw: draw, gate: gate, gateFore: gateFore, torii: torii, drawBoss: drawBoss, cut: cut,
+    draw: draw, gate: gate, torii: torii, drawBoss: drawBoss, cut: cut,
     WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_Y: GROUND_Y
   };
 })();
