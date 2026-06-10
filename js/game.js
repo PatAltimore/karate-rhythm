@@ -1097,6 +1097,12 @@
     });
 
     document.getElementById("start-btn").addEventListener("click", newGame);
+    document.querySelectorAll(".cheat-btn").forEach(function(btn) {
+      btn.addEventListener("click", function(e) {
+        e.stopPropagation();
+        cheatActivate(parseInt(btn.dataset.act, 10));
+      });
+    });
     document.getElementById("restart-btn").addEventListener("click", function () { startAct(checkpointAct); });
     var vb = document.getElementById("victory-btn");
     if (vb) vb.addEventListener("click", newGame);

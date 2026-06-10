@@ -344,11 +344,20 @@ html, body {
   color: #56546a;
   letter-spacing: 0.04em;
 }
-.cheat-hint code {
-  color: #7a7898;
+.cheat-btn {
   font-family: var(--pixel);
-  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: #7a7898;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid #3a3858;
+  padding: 0.25em 0.65em;
+  margin: 0 0.2em;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  vertical-align: middle;
 }
+.cheat-btn:hover { background: rgba(255,255,255,0.12); color: var(--amber); border-color: var(--amber); }
+.cheat-btn:active { transform: translateY(1px); }
 
 #gameover h2 {
   font-size: clamp(1.4rem, 5vw, 2.4rem);
