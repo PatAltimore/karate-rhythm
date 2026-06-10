@@ -406,6 +406,7 @@ html, body {
   padding: 0.7em 1.6em;
   cursor: pointer;
   box-shadow: 4px 4px 0 #000;
+  margin: 0.3em;
   transition: transform 0.06s, box-shadow 0.06s, background 0.1s;
 }
 .btn:hover { background: #f2b63a; }
@@ -413,6 +414,15 @@ html, body {
   transform: translate(3px, 3px);
   box-shadow: 1px 1px 0 #000;
 }
+.btn-secondary {
+  background: transparent;
+  color: #7a7898;
+  border: 2px solid #3a3858;
+  box-shadow: none;
+  font-size: 0.85rem;
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.06); color: var(--ink); border-color: #6a6888; }
+.btn-secondary:active { box-shadow: none; }
 
 .hint {
   margin-top: 1.4em;

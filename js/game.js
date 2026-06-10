@@ -1104,6 +1104,11 @@
       });
     });
     document.getElementById("restart-btn").addEventListener("click", function () { startAct(checkpointAct); });
+    var tb = document.getElementById("title-btn");
+    if (tb) tb.addEventListener("click", function () {
+      gameoverEl.classList.add("hidden");
+      titleEl.classList.remove("hidden");
+    });
     var vb = document.getElementById("victory-btn");
     if (vb) vb.addEventListener("click", newGame);
     var cs = document.getElementById("cutscene-skip");
