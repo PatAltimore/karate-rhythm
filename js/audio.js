@@ -554,7 +554,7 @@ KR.audio = (function () {
     if (!ctx) return;
     var t = ctx.currentTime;
     var perfect = quality === "perfect";
-    var rootHz = pcFreq(reduce(currentRoot()), 1); // A1–E2: deep register, harmonic with boss theme
+    var rootHz = pcFreq(reduce(currentRoot()), 1) * 1.5; // ~82–123 Hz: between original and current
     var vol = perfect ? 1.0 : 0.75;
 
     // Primary pitched body — fast pitch drop for the "boom"
@@ -591,7 +591,7 @@ KR.audio = (function () {
   function playTaikoDeflect() {
     if (!ctx) return;
     var t = ctx.currentTime;
-    var rootHz = pcFreq(reduce(currentRoot()), 2); // one octave higher than block
+    var rootHz = pcFreq(reduce(currentRoot()), 2) * 1.5; // one octave higher than block
 
     var o = ctx.createOscillator(), g = ctx.createGain();
     o.type = "sine";
