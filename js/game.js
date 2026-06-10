@@ -166,10 +166,11 @@
   var best = 0;
   var scrollX, elapsed, nextSlot, nextGateLevel, displayLevel;
   var levelOffset = 0, checkpointAct = 1, displayAct = 1;
-  var boss = null, heroDuel = null;
+  var boss = null, heroDuel = null, bossWhiffBeat = -99;
   var cutscene = null, cutsceneAct = 1, runAct = 1, transition = null;
   var enemies = [], sparks = [], gates = [], feathers = [];
   var player = { runPhase: 0, kicking: false, kickT: 0 };
+  var deathT = 0;
 
   var shakeT = 0, shakeDur = 0.2, shakeMag = 0;
   var flashT = 0, flashDanger = 0;
@@ -347,6 +348,7 @@
       defeated: false, defeatT: 0
     };
     heroDuel = { pose: "idle", poseT: 0 };
+    bossWhiffBeat = -99;
     popup("THE SHOGUN", "level", W / 2, 38);
     flashT = 0.2;
     lastTime = performance.now();
@@ -449,7 +451,20 @@
       if (err < HIT_GOOD && err < bestErr) { best = p; bestErr = err; }
     }
 
-    if (!best) return;  // no projectile in range — no penalty for free taps
+    if (!best) {
+      // Whiff: penalise once per beat so holding space doesn't drain instantly
+      var curBeat = audio.getCurrentBeat();
+      if (curBeat - bossWhiffBeat >= 1.0) {
+        bossWhiffBeat = curBeat;
+        combo = 0;
+        strength -= WHIFF_COST;
+        shake(2.5, 0.16);
+        popup("MISS", "miss", DUEL_HERO_X + 18, GROUND_Y - 30);
+        audio.playMiss();
+        if (strength <= 0) gameOver();
+      }
+      return;
+    }
 
     var quality = bestErr <= HIT_PERFECT ? "perfect" : "good";
     if (best.type === "fire") {
@@ -720,7 +735,8 @@
     // World scrolls while running (or idling on the title); frozen for the duel.
     if (state === "title") scrollX += SCROLL_BASE * dt;
     else if (playing) scrollX += SCROLL_BASE * dt * scrollMul;
-    player.runPhase += dt * 7;
+    if (state !== "over") player.runPhase += dt * 7;
+    else deathT += dt;
     if (player.kicking) {
       player.kickT += dt;
       if (player.kickT >= KICK_DURATION) player.kicking = false;
@@ -879,6 +895,18 @@
   }
 
   function drawPlayer() {
+    if (state === "over") {
+      var FALL_DUR = 0.4;
+      var prog = Math.min(1, deathT / FALL_DUR);
+      var ease = 1 - Math.pow(1 - prog, 2); // ease-out: tips quickly then settles
+      var rot = ease * Math.PI / 2;
+      S.shadow(ctx, PLAYER_X + ease * 10, GROUND_Y, 16 + ease * 8, 0.28);
+      // Sink anchor 4px below GROUND_Y so only the back edge of the lying body shows
+      S.fighter(ctx, PLAYER_X, GROUND_Y + 4, {
+        facing: 1, pose: "hit", rot: rot, kit: PLAYER_KIT
+      });
+      return;
+    }
     var yOff = 0, pose = "run", kickPhase = 0;
     if (player.kicking) {
       pose = "kick";
@@ -908,10 +936,17 @@
       if (cutscene) BG.cut(ctx, cutscene.panels[cutscene.index].scene, cutscene.t);
     } else if (state === "boss" || state === "victory") {
       bossRender();
+    } else if (state === "over" && checkpointAct === 4) {
+      var nowBeat = audio.ready ? audio.getCurrentBeat() : 0;
+      BG.drawBoss(ctx, nowBeat);
+      S.shadow(ctx, DUEL_BOSS_X, GROUND_Y, 26, 0.34);
+      S.boss(ctx, DUEL_BOSS_X, GROUND_Y, { facing: -1, pose: "idle" });
+      drawPlayer();
     } else {
       BG.draw(ctx, scrollX, runAct, elapsed);
       // torii gates sit between the scenery and the fighters, so the hero runs
       // through them (framed by the pillars, the lintel passing overhead).
+      BG.drawFg(ctx, scrollX, runAct);
       for (var gi = 0; gi < gates.length; gi++) BG.gate(ctx, gates[gi].screenX, GROUND_Y, runAct);
       enemies.sort(function (a, b) { return b.x - a.x; });
       for (var i = 0; i < enemies.length; i++) drawFoe(enemies[i]);
@@ -1015,9 +1050,17 @@
     document.getElementById("final-kills").textContent = kills;
     document.getElementById("final-combo").textContent = bestCombo;
     document.getElementById("final-level").textContent = checkpointAct === 4 ? "BOSS" : displayLevel;
+    deathT = 0;
     var rb = document.getElementById("restart-btn");
-    if (rb) rb.textContent = checkpointAct === 1 ? "► Try again" : "► " + actName(checkpointAct) + " RETRY";
+    var tb = document.getElementById("title-btn");
+    var retryLabel = checkpointAct === 1 ? "► Try again" : "► " + actName(checkpointAct) + " RETRY";
+    if (rb) { rb.textContent = retryLabel + " (1)"; rb.disabled = true; }
+    if (tb) tb.disabled = true;
     gameoverEl.classList.remove("hidden");
+    setTimeout(function () {
+      if (rb) { rb.textContent = retryLabel; rb.disabled = false; }
+      if (tb) tb.disabled = false;
+    }, 1000);
   }
 
   // ---- Layout ---------------------------------------------------------
@@ -1061,7 +1104,7 @@
     if (state === "playing") attack();
     else if (state === "boss") bossAttack();
     else if (state === "cutscene") return;     // cut-scenes auto-advance; use SKIP
-    else if (state === "over") startAct(checkpointAct);
+    else if (state === "over") return;         // game-over: require button click, no accidental key restart
     else newGame();                    // title / victory -> fresh run with intro
   }
 

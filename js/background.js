@@ -522,48 +522,6 @@ KR.bg = (function () {
       ctx.fillRect(mwx + 9,  mwy - 3, 4, mwH + 7);          // right jamb
     }
 
-    // ---- Ornate stone columns (same parallax as windows, at interval start)
-    for (var coi = mwf; coi <= mwl; coi++) {
-      var cox = Math.round(coi * mwsp - mwoff);
-      ctx.fillStyle = "#1e1a30"; ctx.fillRect(cox - 9, 36, 18, GROUND_Y - 36); // shaft
-      ctx.fillStyle = "#2c2844"; ctx.fillRect(cox - 9, 36, 2, GROUND_Y - 36);  // lit edge
-      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox + 6, 36, 3, GROUND_Y - 36);  // shadow
-      // Capital with gold band
-      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox - 12, 36, 24, 6);
-      ctx.fillStyle = "#c49430"; ctx.fillRect(cox - 10, 37, 20, 2);
-      // Base with gold band
-      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox - 12, GROUND_Y - 8, 24, 8);
-      ctx.fillStyle = "#c49430"; ctx.fillRect(cox - 10, GROUND_Y - 7, 20, 1);
-    }
-
-    // ---- Crimson silk banners between columns (parallax 0.40) -----------
-    var bnsp = 110, bnoff = scroll * 0.40;
-    var bnf = Math.floor(bnoff / bnsp) - 1, bnl = Math.ceil((bnoff + WIDTH) / bnsp) + 1;
-    for (var bni = bnf; bni <= bnl; bni++) {
-      var bnx = Math.round(bni * bnsp - bnoff + 55);
-      var bnTop = 36, bnH = 84, bnW = 28;
-      // Drop shadow
-      ctx.fillStyle = "#0e0c1a"; ctx.fillRect(bnx - 13, bnTop + 2, bnW, bnH);
-      // Banner cloth
-      ctx.fillStyle = "#641418"; ctx.fillRect(bnx - 14, bnTop, bnW, bnH);
-      ctx.fillStyle = "#8c2422"; ctx.fillRect(bnx - 14, bnTop, 2, bnH);      // highlight edge
-      ctx.fillStyle = "#480c10"; ctx.fillRect(bnx + 12, bnTop, 2, bnH);     // shadow edge
-      // Gold hanging rod
-      ctx.fillStyle = "#c49430"; ctx.fillRect(bnx - 16, bnTop, bnW + 4, 3);
-      // Gold mon / clan crest on banner
-      ctx.fillStyle = "#c49430";
-      ctx.fillRect(bnx - 4, bnTop + 15, 8, 1);  // top bar ─
-      ctx.fillRect(bnx - 4, bnTop + 22, 8, 1);  // mid bar ─
-      ctx.fillRect(bnx - 1, bnTop + 11, 2, 15); // vert. stroke │
-      ctx.fillRect(bnx - 3, bnTop + 32, 6, 1);
-      ctx.fillRect(bnx - 4, bnTop + 38, 8, 1);
-      ctx.fillRect(bnx - 3, bnTop + 44, 6, 1);
-      // Fringe at bottom
-      ctx.fillStyle = "#c49430";
-      for (var fri = 0; fri < 6; fri++)
-        ctx.fillRect(bnx - 13 + fri * 4, bnTop + bnH, 1, 6);
-    }
-
     // ---- Iron-bar dungeon grilles on lower wall (parallax 0.18) ---------
     // Alternating bays show barred cells — you are running past the dungeon.
     var grsp = 110, groff = scroll * 0.18;
@@ -588,6 +546,20 @@ KR.bg = (function () {
       ctx.fillRect(grx - grW / 2 - 3, grTop - 2, grW + 6, 4);
       ctx.fillRect(grx - grW / 2 - 3, grTop - 2, 3, grBot - grTop + 4);
       ctx.fillRect(grx + grW / 2,     grTop - 2, 3, grBot - grTop + 4);
+    }
+
+    // ---- Ornate stone columns — drawn after grilles so they appear in front
+    for (var coi = mwf; coi <= mwl; coi++) {
+      var cox = Math.round(coi * mwsp - mwoff);
+      ctx.fillStyle = "#1e1a30"; ctx.fillRect(cox - 9, 36, 18, GROUND_Y - 36); // shaft
+      ctx.fillStyle = "#2c2844"; ctx.fillRect(cox - 9, 36, 2, GROUND_Y - 36);  // lit edge
+      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox + 6, 36, 3, GROUND_Y - 36);  // shadow
+      // Capital with gold band
+      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox - 12, 36, 24, 6);
+      ctx.fillStyle = "#c49430"; ctx.fillRect(cox - 10, 37, 20, 2);
+      // Base with gold band
+      ctx.fillStyle = "#100e1c"; ctx.fillRect(cox - 12, GROUND_Y - 8, 24, 8);
+      ctx.fillStyle = "#c49430"; ctx.fillRect(cox - 10, GROUND_Y - 7, 20, 1);
     }
 
     // ---- Wall torches (parallax 0.50) ------------------------------------
@@ -615,6 +587,36 @@ KR.bg = (function () {
     ctx.fillRect(0, GROUND_Y + 24, WIDTH, 1);
     // Crimson reflection of banners on polished stone
     ctx.fillStyle = "rgba(88,16,18,0.10)"; ctx.fillRect(0, GROUND_Y, WIDTH, 24);
+  }
+
+  // ---- Act 3 foreground: crimson banners hang in front of the stone arches ---
+  function palaceBanners(ctx, scroll) {
+    var bnsp = 110, bnoff = scroll * 0.40;
+    var bnf = Math.floor(bnoff / bnsp) - 1, bnl = Math.ceil((bnoff + WIDTH) / bnsp) + 1;
+    for (var bni = bnf; bni <= bnl; bni++) {
+      var bnx = Math.round(bni * bnsp - bnoff + 55);
+      var bnTop = 36, bnH = 84, bnW = 28;
+      ctx.fillStyle = "#0e0c1a"; ctx.fillRect(bnx - 13, bnTop + 2, bnW, bnH);   // drop shadow
+      ctx.fillStyle = "#641418"; ctx.fillRect(bnx - 14, bnTop, bnW, bnH);
+      ctx.fillStyle = "#8c2422"; ctx.fillRect(bnx - 14, bnTop, 2, bnH);         // highlight edge
+      ctx.fillStyle = "#480c10"; ctx.fillRect(bnx + 12, bnTop, 2, bnH);         // shadow edge
+      ctx.fillStyle = "#c49430"; ctx.fillRect(bnx - 16, bnTop, bnW + 4, 3);     // gold rod
+      ctx.fillStyle = "#c49430";
+      ctx.fillRect(bnx - 4, bnTop + 15, 8, 1);
+      ctx.fillRect(bnx - 4, bnTop + 22, 8, 1);
+      ctx.fillRect(bnx - 1, bnTop + 11, 2, 15);
+      ctx.fillRect(bnx - 3, bnTop + 32, 6, 1);
+      ctx.fillRect(bnx - 4, bnTop + 38, 8, 1);
+      ctx.fillRect(bnx - 3, bnTop + 44, 6, 1);
+      ctx.fillStyle = "#c49430";
+      for (var fri = 0; fri < 6; fri++)
+        ctx.fillRect(bnx - 13 + fri * 4, bnTop + bnH, 1, 6);                    // fringe
+    }
+  }
+
+  // Foreground layer drawn after gates (act-specific).
+  function drawFg(ctx, scroll, act) {
+    if (act === 3) palaceBanners(ctx, scroll);
   }
 
   function draw(ctx, scroll, act, t) {
@@ -692,10 +694,6 @@ KR.bg = (function () {
     var S = "#1e1a30", SL = "#2c2844", SD = "#0e0c1e", G = "#c49430";
     var archR = 26, SW = 14;   // inner radius, stone surround width
     var archCY = 74;           // arc centre — crown sits at y ≈ 48
-
-    // Dark passage through the arch (drawn first, arch sits in front)
-    ctx.fillStyle = "#050310";
-    ctx.fillRect(cx - archR, 48, archR * 2, gY - 48);
 
     // Outer highlight arc (top rim, 1 px lighter)
     ctx.fillStyle = SL;
@@ -1080,7 +1078,7 @@ KR.bg = (function () {
   }
 
   return {
-    draw: draw, gate: gate, torii: torii, drawBoss: drawBoss, cut: cut,
+    draw: draw, drawFg: drawFg, gate: gate, torii: torii, drawBoss: drawBoss, cut: cut,
     WIDTH: WIDTH, HEIGHT: HEIGHT, GROUND_Y: GROUND_Y
   };
 })();

@@ -71,8 +71,8 @@ KR.audio = (function () {
     // Act III — darker: Neapolitan & tritone harmony, low gritty saw lead.
     { name: "Onslaught", bars: [{ pc: 0, q: "min" }, { pc: 1, q: "maj" }, { pc: 8, q: "maj" }, { pc: 7, q: "maj" }], lead: "wide", bass: "octave", wave: "sawtooth", dark: 1 },
     { name: "Abyss",     bars: [{ pc: 0, q: "min" }, { pc: 6, q: "maj" }, { pc: 10, q: "min" }, { pc: 0, q: "min" }], lead: "roll", bass: "octave", wave: "sawtooth", dark: 1 },
-    // The Shogun — ominous boss theme (tonic pedal, tritone stabs).
-    { name: "Shogun",    bars: [{ pc: 0, q: "min" }, { pc: 0, q: "min" }, { pc: 6, q: "maj" }, { pc: 7, q: "maj" }], lead: "wide", bass: "octave", wave: "sawtooth", dark: 2 }
+    // The Shogun — haunting boss theme (Neapolitan bII → leading-tone dim → v minor: never resolves).
+    { name: "Shogun",    bars: [{ pc: 0, q: "min" }, { pc: 1, q: "maj" }, { pc: 11, q: "dim" }, { pc: 7, q: "min" }], lead: "roll", bass: "octave", wave: "sawtooth", dark: 2 }
   ];
   // Effective level (section 0-9) -> theme index. Acts darken: I,II light; III dark.
   var SECTION_THEME = [0, 1, 0, 2, 3, 4, 5, 6, 5, 6];
@@ -218,6 +218,70 @@ KR.audio = (function () {
     o.connect(g); o2.connect(g); g.connect(musicGain);
     o.start(t); o2.start(t);
     o.stop(t + dur + 0.02); o2.stop(t + dur + 0.02);
+  }
+
+  // Sub-bass heartbeat — quarter-note pulse, strong on beats 1&3, soft on 2&4.
+  function heartbeat(t, strong) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(strong ? 54 : 46, t);
+    o.frequency.exponentialRampToValueAtTime(30, t + 0.24);
+    g.gain.setValueAtTime(strong ? 0.95 : 0.55, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
+    o.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + 0.40);
+  }
+
+  // Deep resonant kick for the boss — longer pitch drop, low rumble.
+  function heavyKick(t) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(140, t);
+    o.frequency.exponentialRampToValueAtTime(36, t + 0.25);
+    g.gain.setValueAtTime(1.2, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+    o.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + 0.46);
+    var n = ctx.createBufferSource(); n.buffer = noiseBuffer;
+    var lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 180;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.38, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    n.connect(lp); lp.connect(ng); ng.connect(musicGain);
+    n.start(t); n.stop(t + 0.18);
+  }
+
+  // Tremolo sine drone — slow-pulsing low pad sustained for one chord (~4 beats).
+  function ghostDrone(freq, t) {
+    var dur = beatDuration * 3.9;
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.17, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    var lfo = ctx.createOscillator(), lfog = ctx.createGain();
+    lfo.type = "sine"; lfo.frequency.value = 3.1;
+    lfog.gain.value = 0.07;
+    lfo.connect(lfog); lfog.connect(g.gain);
+    o.connect(g); g.connect(musicGain);
+    lfo.start(t); lfo.stop(t + dur + 0.05);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  // High ringing bell with long decay — marks each 16-beat cycle in the boss fight.
+  function hauntBell(freq, t) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.10, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 3.6);
+    o.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + 3.7);
+    var o2 = ctx.createOscillator(), g2 = ctx.createGain();
+    o2.type = "sine"; o2.frequency.value = freq * 1.008;
+    g2.gain.setValueAtTime(0.05, t);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 2.4);
+    o2.connect(g2); g2.connect(musicGain);
+    o2.start(t); o2.stop(t + 2.45);
   }
 
   // Dissonant low chord stab (root + tritone + fifth) for dark/boss downbeats.
@@ -379,12 +443,12 @@ KR.audio = (function () {
 
     // Drums
     if (bossMode) {
-      // Drum on the even beats (your kicks), cymbal on the odd beats (your
-      // punches) — reinforcing the duel's drum=kick / cymbal=punch mapping.
-      if (inBar === 0 || inBar === 8) kick(t);
-      if (inBar === 6 || inBar === 10 || inBar === 14) kick(t);
-      if (inBar === 4 || inBar === 12) openhat(t);
-      hat(t, inBar % 4 === 0);
+      if (inBar === 0 || inBar === 8) heavyKick(t);
+      if (inBar === 4 || inBar === 12) snare(t, false);
+      if (inBar === 14) kick(t);                          // "a" of beat 4 — anticipation
+      heartbeat(t, inBar === 0 || inBar === 8);           // sub-bass pulse every beat
+      hat(t, inBar % 2 === 0);                            // 8th-note hats for drive
+      if (inBar === 0 && bar === 0) openhat(t);
     } else {
       if (inBar === 0 || inBar === 8) kick(t);
       if (intensity >= 2 && inBar === 10) kick(t);
@@ -400,6 +464,11 @@ KR.audio = (function () {
 
     // Dissonant stab on each downbeat in the dark act / the boss fight.
     if ((dark >= 1 || bossMode) && inBar === 0) stab(t, chord.pc, dark + (bossMode ? 1 : 0));
+    if (bossMode && inBar === 8) stab(t, chord.pc, 2);  // beat 3 echo stab
+
+    // Boss: tremolo drone sustains under each chord; haunting bell marks each full cycle.
+    if (bossMode && inBar === 0) ghostDrone(octShift(pcFreq(reduce(chord.pc), 1), 28, 62), t);
+    if (bossMode && inBar === 0 && bar === 0) hauntBell(pcFreq(reduce(chord.pc), 5), t);
 
     // Bass
     if (theme.bass === "octave") {

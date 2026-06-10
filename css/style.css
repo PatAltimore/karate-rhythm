@@ -414,6 +414,11 @@ html, body {
   transform: translate(3px, 3px);
   box-shadow: 1px 1px 0 #000;
 }
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 .btn-secondary {
   background: transparent;
   color: #7a7898;
