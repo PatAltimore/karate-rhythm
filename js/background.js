@@ -1027,36 +1027,46 @@ KR.bg = (function () {
       var hx = -12 + Math.min(1, t / 2.2) * 72;                // hero strides in
       SP.fighter(ctx, hx, gy, { facing: 1, pose: t < 2.2 ? "run" : "idle", phase: t * 1.6 });
     } else if (scene === "cliff") {
-      // Hero scales a sheer cliff face to reach the palace road above.
-      // Left strip: dusk sky + bridge ledge the hero is climbing up to.
-      // Right: dark rock face.
+      // Hero scales a sheer cliff face (left) to reach the palace road platform (right).
       cutSky(ctx, "dusk");
-      var cEdge = 66;
-      // cliff face (fills right side of screen)
+      var cEdge = 200;
+      // Floor strip below ground level
+      cutFloor(ctx, gy, "#7a5630", "#4a3424");
+      // Cliff face occupies LEFT portion, sky-to-ground only
       ctx.fillStyle = "#1c1530";
-      ctx.fillRect(cEdge, 0, WIDTH - cEdge, HEIGHT);
-      // rocky strata texture
+      ctx.fillRect(0, 0, cEdge, gy);
+      // Rocky strata texture spread across cliff width
       ctx.fillStyle = "#2a2046";
       var strata = [7, 24, 40, 57, 74, 91, 108, 124, 140];
       for (var si = 0; si < strata.length; si++) {
-        ctx.fillRect(cEdge + 6 + (si % 3) * 12, strata[si], 18 + (si * 11) % 36, 1);
+        ctx.fillRect(10 + (si % 5) * 38, strata[si], 18 + (si * 11) % 36, 1);
       }
       ctx.fillStyle = "#342d54"; // lighter highlight stripe mid-cliff
-      ctx.fillRect(cEdge + 22, 30, 10, HEIGHT - 30);
-      ctx.fillStyle = "#0e0b1a"; // deep shadow crack at the edge
-      ctx.fillRect(cEdge - 3, 0, 4, HEIGHT);
-      // Bridge platform ledge at the top left (where the hero arrives)
+      ctx.fillRect(110, 30, 10, gy - 30);
+      ctx.fillStyle = "#0e0b1a"; // deep shadow crack at cliff-platform edge
+      ctx.fillRect(cEdge - 3, 0, 4, gy);
+      // Platform ledge on the RIGHT — where hero arrives
       ctx.fillStyle = "#7a5630";
-      ctx.fillRect(0, gy, cEdge - 2, 12);
+      ctx.fillRect(cEdge, gy, WIDTH - cEdge, 12);
       ctx.fillStyle = "#a8763e";
-      ctx.fillRect(0, gy, cEdge - 2, 1);
-      for (var cpx = -2; cpx < cEdge; cpx += 11)
+      ctx.fillRect(cEdge, gy, WIDTH - cEdge, 1);
+      for (var cpx = cEdge; cpx < WIDTH; cpx += 11)
         ctx.fillRect(Math.round(cpx), gy, 1, 12);
       // Hero climbs from below the screen up to platform height
       var climbFrac = Math.min(1, t / 3.8);
       var climbEase = 1 - (1 - climbFrac) * (1 - climbFrac); // ease-out
       var hcy = Math.round(HEIGHT + 14 - (HEIGHT + 14 - gy) * climbEase);
-      SP.fighter(ctx, cEdge - 10, hcy, { facing: 1, pose: "run", phase: t * 2.4 });
+      if (climbFrac < 1) {
+        // Lean -45° into the cliff: running arm/leg motion reads as scrambling up rock
+        ctx.save();
+        ctx.translate(cEdge - 8, hcy);
+        ctx.rotate(-Math.PI / 4);
+        SP.fighter(ctx, 0, 0, { facing: 1, pose: "run", phase: t * 2.4 });
+        ctx.restore();
+      } else {
+        // Arrived: stand idle on the platform
+        SP.fighter(ctx, cEdge + 8, gy, { facing: 1, pose: "idle" });
+      }
     } else if (scene === "dawn") {
       cutSky(ctx, "dawn");
       cutMoon(ctx, 150, 150 - Math.min(1, t / 2.6) * 92, 18, true); // sun rises
