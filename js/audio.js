@@ -548,6 +548,70 @@ KR.audio = (function () {
     }
   }
 
+  // O-daiko block hit — tuned to current chord root (octave 2, ~110-165 Hz).
+  // Replaces the gong for fireball blocks and boss hits in the duel.
+  function playTaikoBlock(quality) {
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    var perfect = quality === "perfect";
+    var rootHz = pcFreq(reduce(currentRoot()), 1); // A1–E2: deep register, harmonic with boss theme
+    var vol = perfect ? 1.0 : 0.75;
+
+    // Primary pitched body — fast pitch drop for the "boom"
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(rootHz * 2.2, t);
+    o.frequency.exponentialRampToValueAtTime(rootHz, t + 0.055);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + (perfect ? 0.30 : 0.22));
+    o.connect(g); g.connect(sfxGain);
+    o.start(t); o.stop(t + 0.33);
+
+    // Sub octave for weight
+    var s2 = ctx.createOscillator(), sg2 = ctx.createGain();
+    s2.type = "sine";
+    s2.frequency.value = rootHz * 0.5;
+    sg2.gain.setValueAtTime(vol * 0.42, t);
+    sg2.gain.exponentialRampToValueAtTime(0.001, t + 0.10);
+    s2.connect(sg2); sg2.connect(sfxGain);
+    s2.start(t); s2.stop(t + 0.12);
+
+    // Mallet skin transient — low-pass noise burst
+    var n = ctx.createBufferSource(); n.buffer = noiseBuffer;
+    var lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 800;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(vol * 0.5, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    n.connect(lp); lp.connect(ng); ng.connect(sfxGain);
+    n.start(t); n.stop(t + 0.05);
+  }
+
+  // Ko-tsuzumi deflect — higher taiko (octave 3, ~220-330 Hz) for throwing star returns.
+  // Bright crack distinguishes deflection from a plain block.
+  function playTaikoDeflect() {
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    var rootHz = pcFreq(reduce(currentRoot()), 2); // one octave higher than block
+
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(rootHz * 2.0, t);
+    o.frequency.exponentialRampToValueAtTime(rootHz, t + 0.04);
+    g.gain.setValueAtTime(0.85, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.20);
+    o.connect(g); g.connect(sfxGain);
+    o.start(t); o.stop(t + 0.22);
+
+    // Mid-band crack for the deflection snap
+    var n = ctx.createBufferSource(); n.buffer = noiseBuffer;
+    var bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2400; bp.Q.value = 1.2;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.55, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    n.connect(bp); bp.connect(ng); ng.connect(sfxGain);
+    n.start(t); n.stop(t + 0.07);
+  }
+
   // Deep taiko boom — the hero's KICK in the boss duel (drum = kick).
   function playTaiko() {
     if (!ctx) return;
@@ -639,6 +703,8 @@ KR.audio = (function () {
     suspend: suspend,
     resume: resume,
     playHit: playHit,
+    playTaikoBlock: playTaikoBlock,
+    playTaikoDeflect: playTaikoDeflect,
     playCymbal: playCymbal,
     playTaiko: playTaiko,
     playMiss: playMiss,

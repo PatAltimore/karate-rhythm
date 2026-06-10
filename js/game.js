@@ -52,7 +52,8 @@
   var DUEL_HERO_X = 52;           // hero stands at left of throne room
   var DUEL_BOSS_X = 224;          // Shogun stands at right of throne room
   var FIGHT_START = 5;            // entrance beats before projectiles start
-  var PROJ_TRAVEL_BEATS = 2;      // beats for a projectile to cross the room
+  var PROJ_TRAVEL_BEATS = 2;      // beats for a throwing star to cross the room
+  var FIRE_TRAVEL_BEATS = 1.5;   // fireballs travel faster and come in straight
   var PROJ_STEP = 0.5;            // beats per pattern step (8th-note resolution)
   var PROJ_MISS_COST = 30;        // strength lost when hit by a projectile
   var PROJ_STAR_DAMAGE = 8;       // boss HP lost when a throwing star is deflected
@@ -317,9 +318,9 @@
   // Miss → player takes damage. Patterns loop; phase escalates as boss HP falls.
   // Each character = one beat. Projectiles travel PROJ_TRAVEL_BEATS to reach hero.
   var PROJ_PATTERNS = [
-    "FS.FSFS.FS.FSFS.FS.FSFS.FS.FSFS",  // phase 0: 8th-note bursts of 2 and 4, 24 per 16 beats
-    "FSFSFS.FSFSFS.FSFSFSFS.FSFSFS.FS",  // phase 1: long runs with brief gaps, 28 per 16 beats
-    "FSFSFSFSFSFSFSFSFSFSFSFSFSFSFSFS"    // phase 2: every 8th note, 32 per 16 beats — unavoidable
+    "F.S.F...F.S...F.F.S.F.S.FS..F.S.",  // phase 0: quarter-note groove, 13 per 16 beats
+    "FS.F.S..F.S.FS..FS.F.S..F.S.FSFS",  // phase 1: quarter + 8th pairs, 18 per 16 beats
+    "FSF.S.F.FS.FSF..FSF.S.FSFSFS.FS."   // phase 2: dense but rhythmic, 22 per 16 beats
   ];
   function bossDuelPhase() {
     if (!boss) return 0;
@@ -382,11 +383,14 @@
       var pat = PROJ_PATTERNS[bossDuelPhase()];
       var ch = pat[patIdx % pat.length];
       if (ch === "F" || ch === "S") {
-        var throwBeat = patIdx * PROJ_STEP;
+        var isFire = ch === "F";
+        var travelB = isFire ? FIRE_TRAVEL_BEATS : PROJ_TRAVEL_BEATS;
+        var arrivalBeat = patIdx * PROJ_STEP + PROJ_TRAVEL_BEATS; // tap beat unchanged for both
         boss.projectiles.push({
-          type: ch === "F" ? "fire" : "star",
-          throwBeat: throwBeat,
-          arrivalBeat: throwBeat + PROJ_TRAVEL_BEATS,
+          type: isFire ? "fire" : "star",
+          throwBeat: arrivalBeat - travelB,
+          arrivalBeat: arrivalBeat,
+          travelBeats: travelB,
           state: "flying",
           endBeat: -1,
           deflectBeat: -1
@@ -415,7 +419,7 @@
           boss.hp -= PROJ_STAR_DAMAGE;
           boss.pose = "hit"; boss.poseT = 0.45; boss.hitFlash = 0.22;
           addSpark(DUEL_BOSS_X - 8, GROUND_Y - 24, "perfect");
-          if (audio.playHit) audio.playHit();
+          if (audio.playTaikoBlock) audio.playTaikoBlock("perfect");
           if (boss.hp <= 0) {
             boss.hp = 0; boss.defeated = true; boss.defeatT = 0;
             boss.pose = "hit"; score += 600; flashT = 0.3;
@@ -455,7 +459,7 @@
       score += quality === "perfect" ? 50 : 25;
       combo++; if (combo > bestCombo) bestCombo = combo;
       addSpark(DUEL_HERO_X + 14, GROUND_Y - 22, quality);
-      if (audio.playHit) audio.playHit();
+      if (audio.playTaikoBlock) audio.playTaikoBlock(quality);
       popup((quality === "perfect" ? "PERFECT " : "") + "BLOCK!", quality, W / 2, 52);
     } else {
       // Deflect throwing star back at the Shogun
@@ -463,7 +467,7 @@
       heroDuel.pose = "block"; heroDuel.poseT = 0.35;
       score += quality === "perfect" ? 80 : 45;
       combo++; if (combo > bestCombo) bestCombo = combo;
-      if (audio.playCymbal) audio.playCymbal();
+      if (audio.playTaikoDeflect) audio.playTaikoDeflect();
       popup((quality === "perfect" ? "PERFECT " : "") + "DEFLECT!", quality, W / 2, 52);
     }
   }
@@ -543,10 +547,11 @@
     var px, alpha = 1;
 
     if (p.state === "flying") {
-      var prog = (fightBeat - p.throwBeat) / PROJ_TRAVEL_BEATS;
+      var travelB = p.travelBeats || PROJ_TRAVEL_BEATS;
+      var prog = (fightBeat - p.throwBeat) / travelB;
       px = Math.round(lerp(DUEL_BOSS_X - 16, DUEL_HERO_X + 16, clamp(prog, 0, 1)));
-      // Slight upward arc mid-flight
-      py -= Math.round(Math.sin(clamp(prog, 0, 1) * Math.PI) * 4);
+      // Stars arc slightly; fireballs come in straight
+      if (p.type === "star") py -= Math.round(Math.sin(clamp(prog, 0, 1) * Math.PI) * 4);
     } else if (p.state === "deflected") {
       var defProg = (fightBeat - p.deflectBeat) / PROJ_TRAVEL_BEATS;
       px = Math.round(lerp(DUEL_HERO_X + 16, DUEL_BOSS_X - 16, clamp(defProg, 0, 1)));
