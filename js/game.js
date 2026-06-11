@@ -54,6 +54,7 @@
   var FIGHT_START = 5;            // entrance beats before projectiles start
   var PROJ_TRAVEL_BEATS = 2;      // beats for a throwing star to cross the room
   var FIRE_TRAVEL_BEATS = 1.5;   // fireballs travel faster and come in straight
+  var PLASMA_TRAVEL_BEATS = 0.9; // plasma ball: very fast visual travel, same arrival beat
   var PROJ_STEP = 0.5;            // beats per pattern step (8th-note resolution)
   var PROJ_MISS_COST = 30;        // strength lost when hit by a projectile
   var PROJ_STAR_DAMAGE = 8;       // boss HP lost when a throwing star is deflected
@@ -63,15 +64,15 @@
   // ---- Story cut-scenes (between acts) ---------------------------------
   var CUTSCENES = {
     intro: [
-      { scene: "castle",  text: "The Shogun Akuma has seized the mountain castle — and taken the princess captive." },
-      { scene: "dungeon", text: "In the dungeon keep she waits, her hope dimming with each passing hour." },
+      { scene: "castle",  text: "Akuma has seized the mountain castle — and taken Mariko captive." },
+      { scene: "dungeon", text: "In the dungeon keep Mariko waits, her hope dimming with each passing hour." },
       { scene: "setout",  text: "At dusk you set out alone. Only rhythm and resolve will carry you to her." },
       { scene: "cliff",   text: "You scale the cliff to the palace road. His guards stand between you and her freedom." }
     ],
     act2:    [{ scene: "river",  text: "Beyond the river his guards grow stronger. She endures — you cannot fail her." }],
-    act3:    [{ scene: "gates",  text: "The castle gates. His mightiest warriors bar the final road to the princess." }],
-    boss:    [{ scene: "throne", text: "The Shogun rises from his throne. Defeat him — and the princess goes free." }],
-    victory: [{ scene: "dawn",   text: "The Shogun falls. The princess is freed. Dawn breaks over the restored castle." }]
+    act3:    [{ scene: "gates",  text: "The castle gates. His mightiest warriors bar the final road to Mariko." }],
+    boss:    [{ scene: "throne", text: "Akuma rises from his throne. Defeat him — and Mariko goes free." }],
+    victory: [{ scene: "reunion", text: "You find Mariko in the dungeon. She is safe. It is over." }]
   };
   var CUT_PANEL_DUR = 5.5;         // seconds each panel auto-holds (tap to advance)
   var FADE_DUR = 0.45;             // fade-to-black duration on transitions
@@ -171,6 +172,8 @@
   var enemies = [], sparks = [], gates = [], feathers = [];
   var player = { runPhase: 0, kicking: false, kickT: 0 };
   var deathT = 0;
+  var runOffX = 0;       // >0 while player sprints off the right edge at act end
+  var runOffDone = null; // callback to fire once player clears the screen
 
   var shakeT = 0, shakeDur = 0.2, shakeMag = 0;
   var flashT = 0, flashDanger = 0;
@@ -319,9 +322,9 @@
   // Miss → player takes damage. Patterns loop; phase escalates as boss HP falls.
   // Each character = one beat. Projectiles travel PROJ_TRAVEL_BEATS to reach hero.
   var PROJ_PATTERNS = [
-    "F.S.F...F.S...F.F.S.F.S.FS..F.S.",  // phase 0: quarter-note groove, 13 per 16 beats
-    "FS.F.S..F.S.FS..FS.F.S..F.S.FSFS",  // phase 1: quarter + 8th pairs, 18 per 16 beats
-    "FSF.S.F.FS.FSF..FSF.S.FSFSFS.FS."   // phase 2: dense but rhythmic, 22 per 16 beats
+    "F...S...F.......S...F...S.......S...F...F.......S...F...S.......",  // phase 0: quarter notes, melodic and readable
+    "F.S.F...S.P.F...F.S.P...F.S.F.P.",  // phase 1: 8th pairs + plasma on offbeats
+    "FSP.S.F.SF.P.SF.F.S.PSF.S.P.FSF."   // phase 2: dense syncopation + plasma
   ];
   function bossDuelPhase() {
     if (!boss) return 0;
@@ -349,7 +352,7 @@
     };
     heroDuel = { pose: "idle", poseT: 0 };
     bossWhiffBeat = -99;
-    popup("THE SHOGUN", "level", W / 2, 38);
+    popup("AKUMA", "level", W / 2, 38);
     flashT = 0.2;
     lastTime = performance.now();
   }
@@ -384,12 +387,12 @@
       if (patIdx < 0) continue;
       var pat = PROJ_PATTERNS[bossDuelPhase()];
       var ch = pat[patIdx % pat.length];
-      if (ch === "F" || ch === "S") {
-        var isFire = ch === "F";
-        var travelB = isFire ? FIRE_TRAVEL_BEATS : PROJ_TRAVEL_BEATS;
-        var arrivalBeat = patIdx * PROJ_STEP + PROJ_TRAVEL_BEATS; // tap beat unchanged for both
+      if (ch === "F" || ch === "S" || ch === "P") {
+        var isFire = ch === "F"; var isPlasma = ch === "P";
+        var travelB = isPlasma ? PLASMA_TRAVEL_BEATS : (isFire ? FIRE_TRAVEL_BEATS : PROJ_TRAVEL_BEATS);
+        var arrivalBeat = patIdx * PROJ_STEP + PROJ_TRAVEL_BEATS; // tap beat consistent for all types
         boss.projectiles.push({
-          type: isFire ? "fire" : "star",
+          type: isFire ? "fire" : (isPlasma ? "plasma" : "star"),
           throwBeat: arrivalBeat - travelB,
           arrivalBeat: arrivalBeat,
           travelBeats: travelB,
@@ -411,7 +414,7 @@
           strength -= PROJ_MISS_COST; combo = 0;
           shake(5, 0.3); flashDanger = 0.22;
           if (audio.playMiss) audio.playMiss();
-          popup("HIT!", "miss", W / 2, 52);
+          popup("HIT!", "miss", DUEL_HERO_X + 16, GROUND_Y - 38);
           if (strength <= 0) { gameOver(); return; }
         }
       } else if (p.state === "deflected") {
@@ -467,6 +470,7 @@
     }
 
     var quality = bestErr <= HIT_PERFECT ? "perfect" : "good";
+    var popX = DUEL_HERO_X + 16, popY = GROUND_Y - 38;
     if (best.type === "fire") {
       // Block fireball — dissipates harmlessly
       best.state = "blocked"; best.endBeat = fightBeat;
@@ -474,16 +478,25 @@
       score += quality === "perfect" ? 50 : 25;
       combo++; if (combo > bestCombo) bestCombo = combo;
       addSpark(DUEL_HERO_X + 14, GROUND_Y - 22, quality);
-      if (audio.playTaikoBlock) audio.playTaikoBlock(quality);
-      popup((quality === "perfect" ? "PERFECT " : "") + "BLOCK!", quality, W / 2, 52);
+      if (audio.playHit) audio.playHit(quality);
+      popup((quality === "perfect" ? "PERFECT " : "") + "BLOCK!", quality, popX, popY);
+    } else if (best.type === "plasma") {
+      // Block plasma ball — cymbal crash, dissipates
+      best.state = "blocked"; best.endBeat = fightBeat;
+      heroDuel.pose = "block"; heroDuel.poseT = 0.35;
+      score += quality === "perfect" ? 60 : 30;
+      combo++; if (combo > bestCombo) bestCombo = combo;
+      addSpark(DUEL_HERO_X + 14, GROUND_Y - 22, "perfect");
+      if (audio.playCymbal) audio.playCymbal();
+      popup((quality === "perfect" ? "PERFECT " : "") + "BLOCK!", quality, popX, popY);
     } else {
-      // Deflect throwing star back at the Shogun
+      // Deflect throwing star back at Akuma
       best.state = "deflected"; best.deflectBeat = fightBeat;
       heroDuel.pose = "block"; heroDuel.poseT = 0.35;
       score += quality === "perfect" ? 80 : 45;
       combo++; if (combo > bestCombo) bestCombo = combo;
-      if (audio.playTaikoDeflect) audio.playTaikoDeflect();
-      popup((quality === "perfect" ? "PERFECT " : "") + "DEFLECT!", quality, W / 2, 52);
+      if (audio.playHit) audio.playHit(quality);
+      popup((quality === "perfect" ? "PERFECT " : "") + "DEFLECT!", quality, popX, popY);
     }
   }
 
@@ -528,7 +541,7 @@
         for (var b = bStart; b <= bEnd; b++) {
           var pat2 = PROJ_PATTERNS[bossDuelPhase()];
           var pch = pat2[b % pat2.length];
-          if (pch === "F" || pch === "S") {
+          if (pch === "F" || pch === "S" || pch === "P") {
             var eta = b * PROJ_STEP - fightBeat;
             if (eta >= 0 && eta <= 1.2) { bpose = eta < 0.4 ? "attack" : "windup"; break; }
           }
@@ -592,6 +605,21 @@
       ctx.fillStyle = "#ff8800";
       ctx.fillRect(px - 3, py - 3, 6, 6);
       ctx.fillStyle = "#ffee00";
+      ctx.fillRect(px - 1, py - 1, 2, 2);
+    } else if (p.type === "plasma") {
+      // Plasma ball: large pulsing blue/cyan orb
+      var pulse = (Math.sin(fightBeat * Math.PI * 6) + 1) * 0.5; // 0..1 fast pulse
+      ctx.fillStyle = "#0033aa";
+      ctx.fillRect(px - 7, py - 3, 14, 6);
+      ctx.fillRect(px - 3, py - 7, 6, 14);
+      ctx.fillStyle = "#0066ff";
+      ctx.fillRect(px - 6, py - 5, 12, 10);
+      ctx.fillRect(px - 5, py - 6, 10, 12);
+      ctx.fillStyle = pulse > 0.5 ? "#44aaff" : "#2288ff";
+      ctx.fillRect(px - 4, py - 4, 8, 8);
+      ctx.fillStyle = "#aaddff";
+      ctx.fillRect(px - 2, py - 2, 4, 4);
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(px - 1, py - 1, 2, 2);
     } else {
       // Throwing star: spinning silver shuriken (alternates + and × every 1/8 beat)
@@ -752,14 +780,27 @@
       // boss after act III). Each act is its own runner segment.
       var el = effLevel(curBeat);
       displayAct = actForLevel(Math.min(el, TOTAL_LEVELS));
-      if (el > actEndLevel(runAct)) {
+      if (el > actEndLevel(runAct) && !runOffDone) {
+        // Clear remaining enemies and sprint the player off-screen before the cut-scene.
+        enemies.length = 0; sparks.length = 0; player.kicking = false;
         if (runAct >= 3) {
-          goCutscene("boss", enterBoss);
+          runOffDone = function () { goCutscene("boss", enterBoss); };
         } else {
-          var nxt = runAct + 1;
-          goCutscene("act" + nxt, function () { startAct(nxt); });
+          (function () { var nxt = runAct + 1; runOffDone = function () { goCutscene("act" + nxt, function () { startAct(nxt); }); }; })();
         }
-        return;
+        runOffX = 0;
+      }
+      if (runOffDone) {
+        var RUN_OFF_SPEED = 200; // px/s — fast sprint
+        runOffX += RUN_OFF_SPEED * dt;
+        player.runPhase += dt * 10;
+        if (runOffX > W - PLAYER_X + 24) {
+          var cb = runOffDone; runOffDone = null;
+          // Leave runOffX at its exit value — player stays off-screen during the fade-out.
+          // startAct() resets it to 0 when the new act begins.
+          cb();
+        }
+        return; // skip enemy spawning while running off
       }
 
       // Spawn foes whose march-in time has arrived (16th-note slots). The phrase
@@ -913,8 +954,9 @@
       kickPhase = player.kickT / KICK_DURATION;
       yOff = -Math.sin(kickPhase * Math.PI) * JUMP_HEIGHT;
     }
-    S.shadow(ctx, PLAYER_X, GROUND_Y, 16, 0.28 * (1 - (-yOff) / JUMP_HEIGHT * 0.7));
-    S.fighter(ctx, PLAYER_X, GROUND_Y + yOff, {
+    var px = PLAYER_X + Math.round(runOffX);
+    S.shadow(ctx, px, GROUND_Y, 16, 0.28 * (1 - (-yOff) / JUMP_HEIGHT * 0.7));
+    S.fighter(ctx, px, GROUND_Y + yOff, {
       facing: 1, pose: pose,
       phase: player.kicking ? kickPhase : player.runPhase,
       kit: PLAYER_KIT
@@ -1020,6 +1062,7 @@
     strength = START_STRENGTH; combo = 0;
     enemies.length = 0; sparks.length = 0; gates.length = 0; feathers.length = 0;
     boss = null; heroDuel = null;
+    runOffX = 0; runOffDone = null;
     scrollX = 0; elapsed = 0; nextSlot = 0; nextGateLevel = 2;
     player.kicking = false; player.kickT = 0;
     shakeT = 0; flashT = 0; flashDanger = 0;
@@ -1037,6 +1080,7 @@
   function gameOver() {
     if (state === "over") return;
     state = "over";
+    runOffX = 0; runOffDone = null;
     strength = 0;
     audio.stop();
     if (audio.setBossMode) audio.setBossMode(false);

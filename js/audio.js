@@ -284,6 +284,19 @@ KR.audio = (function () {
     o2.start(t); o2.stop(t + 2.45);
   }
 
+  // Koto/shamisen pluck — bright, short decay; the boss-battle melodic riff.
+  function pluck(freq, t) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sawtooth"; o.frequency.value = freq;
+    var lp = ctx.createBiquadFilter(); lp.type = "lowpass";
+    lp.frequency.setValueAtTime(freq * 9, t);
+    lp.frequency.exponentialRampToValueAtTime(freq * 1.8, t + 0.10);
+    g.gain.setValueAtTime(0.28, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+    o.connect(lp); lp.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + 0.30);
+  }
+
   // Dissonant low chord stab (root + tritone + fifth) for dark/boss downbeats.
   function stab(t, pc, amt) {
     var notes = [pc, pc + 6, pc + 7];
@@ -469,6 +482,13 @@ KR.audio = (function () {
     // Boss: tremolo drone sustains under each chord; haunting bell marks each full cycle.
     if (bossMode && inBar === 0) ghostDrone(octShift(pcFreq(reduce(chord.pc), 1), 28, 62), t);
     if (bossMode && inBar === 0 && bar === 0) hauntBell(pcFreq(reduce(chord.pc), 5), t);
+
+    // Boss melodic riff: koto pluck on each quarter beat, cycling through chord tones.
+    // root → 5th → min3 → 5th gives a distinctive figure players can "play along to".
+    if (bossMode && inBar % 4 === 0) {
+      var pluckIntervals = [0, 7, 3, 7];
+      pluck(pcFreq(reduce(chord.pc + pluckIntervals[inBar / 4]), 4), t);
+    }
 
     // Bass
     if (theme.bass === "octave") {
@@ -681,6 +701,23 @@ KR.audio = (function () {
     n.start(t); n.stop(t + 0.07);
   }
 
+  // Electric discharge when a plasma ball is blocked.
+  function playPlasmaBlock() {
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(1100, t);
+    o.frequency.exponentialRampToValueAtTime(240, t + 0.14);
+    g.gain.setValueAtTime(0.55, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t + 0.20);
+    var n = ctx.createBufferSource(); n.buffer = noiseBuffer;
+    var hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 3800;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.65, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.10);
+    n.connect(hp); hp.connect(ng); ng.connect(sfxGain); n.start(t); n.stop(t + 0.11);
+  }
+
   // Deep taiko boom — the hero's KICK in the boss duel (drum = kick).
   function playTaiko() {
     if (!ctx) return;
@@ -774,6 +811,7 @@ KR.audio = (function () {
     playHit: playHit,
     playTaikoBlock: playTaikoBlock,
     playTaikoDeflect: playTaikoDeflect,
+    playPlasmaBlock: playPlasmaBlock,
     playCymbal: playCymbal,
     playTaiko: playTaiko,
     playMiss: playMiss,

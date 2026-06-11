@@ -1074,6 +1074,44 @@ KR.bg = (function () {
       cutFloor(ctx, gy, "#7a5a44", "#4a3424");
       SP.fighter(ctx, 96, bob(0), { facing: 1, pose: "idle" });
       SP.fighter(ctx, 126, bob(2), { facing: -1, pose: "idle", kit: KIT_PRINCESS });
+    } else if (scene === "reunion") {
+      // The dungeon cell — bars torn open, hero races to the princess.
+      ctx.fillStyle = "#0c0a12"; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      ctx.fillStyle = "#13101c";
+      for (var dr = 0; dr < 9; dr++) {
+        var deven = dr % 2 === 0;
+        for (var dc = 0; dc < 10; dc++) ctx.fillRect(dc * 32 + (deven ? 0 : 16), dr * 20, 30, 18);
+      }
+      // Moonlit window (upper right)
+      var mwx = 196, mwy = 24;
+      var mspill = ctx.createRadialGradient(mwx + 12, mwy + 10, 2, mwx + 12, mwy + 10, 44);
+      mspill.addColorStop(0, "rgba(140,150,210,0.22)"); mspill.addColorStop(1, "rgba(140,150,210,0)");
+      ctx.fillStyle = mspill; ctx.fillRect(mwx - 24, mwy - 10, 72, 66);
+      ctx.fillStyle = "#1c1830"; ctx.fillRect(mwx, mwy, 24, 18);
+      ctx.fillStyle = "rgba(140,152,215,0.48)"; ctx.fillRect(mwx + 1, mwy + 1, 22, 16);
+      ctx.fillStyle = "#0c0a18"; ctx.fillRect(mwx + 11, mwy, 2, 18); ctx.fillRect(mwx, mwy + 8, 24, 2);
+      // Floor
+      ctx.fillStyle = "#14102a"; ctx.fillRect(0, gy, WIDTH, HEIGHT - gy);
+      ctx.fillStyle = "#1e1836"; ctx.fillRect(0, gy, WIDTH, 1);
+      // Broken bar pieces on the ground — the cell has been opened
+      ctx.fillStyle = "#1a1828";
+      ctx.fillRect(20, gy + 2, 5, 4); ctx.fillRect(48, gy + 1, 4, 5); ctx.fillRect(72, gy + 3, 4, 3);
+      // Torch on left wall — warmer and brighter now
+      bossTorch(ctx, 26, 88, 0.5 + 0.5 * Math.abs(Math.sin(t * 5.6)));
+      // Hero runs in from the left — ease-out so he slows as he reaches her
+      var runFrac = Math.min(1, t / 2.2);
+      var runEase = 1 - (1 - runFrac) * (1 - runFrac);
+      var hx = Math.round(-14 + runEase * 152); // runs to x≈138
+      SP.fighter(ctx, hx, gy, { facing: 1, pose: runFrac < 1 ? "run" : "idle", phase: t * 7 });
+      // Princess steps toward him as he arrives
+      var pFrac = Math.max(0, Math.min(1, (t - 1.4) / 1.0));
+      var pEase = 1 - (1 - pFrac) * (1 - pFrac);
+      var prx = Math.round(168 - pEase * 22); // steps from 168 to 146
+      SP.fighter(ctx, prx, bob(2), { facing: -1, pose: "idle", kit: KIT_PRINCESS });
+      // Warm torch glow fills the freed cell
+      var tgl = ctx.createRadialGradient(26, 88, 6, 26, 88, 130);
+      tgl.addColorStop(0, "rgba(230,145,65,0.22)"); tgl.addColorStop(1, "rgba(230,145,65,0)");
+      ctx.fillStyle = tgl; ctx.fillRect(0, 0, WIDTH, HEIGHT);
     }
   }
 
