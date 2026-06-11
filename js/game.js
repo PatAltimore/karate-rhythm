@@ -64,15 +64,15 @@
   // ---- Story cut-scenes (between acts) ---------------------------------
   var CUTSCENES = {
     intro: [
-      { scene: "castle",  text: "Akuma has seized the mountain castle — and taken Mariko captive." },
-      { scene: "dungeon", text: "In the dungeon keep Mariko waits, her hope dimming with each passing hour." },
-      { scene: "setout",  text: "At dusk you set out alone. Only rhythm and resolve will carry you to her." },
-      { scene: "cliff",   text: "You scale the cliff to the palace road. His guards stand between you and her freedom." }
+      { scene: "castle",  text: "The warlord Akuma has seized the mountain fortress. By dawn, Mariko's fate will be sealed." },
+      { scene: "dungeon", text: "Deep in the keep, Mariko waits in silence. Her lamp is burning low." },
+      { scene: "setout",  text: "You go alone. At dusk. Armed with nothing but your discipline and the rhythm in your blood." },
+      { scene: "cliff",   text: "The cliff brings you to the palace road. Somewhere beyond Akuma's wall, Mariko is still alive." }
     ],
-    act2:    [{ scene: "river",  text: "Beyond the river his guards grow stronger. She endures — you cannot fail her." }],
-    act3:    [{ scene: "gates",  text: "The castle gates. His mightiest warriors bar the final road to Mariko." }],
-    boss:    [{ scene: "throne", text: "Akuma rises from his throne. Defeat him — and Mariko goes free." }],
-    victory: [{ scene: "reunion", text: "You find Mariko in the dungeon. She is safe. It is over." }]
+    act2:    [{ scene: "river",  text: "Past the river, his warriors grow fierce. They have trained for years for men like you." }],
+    act3:    [{ scene: "gates",  text: "The inner gate. His deadliest guard holds this ground. One more wall between you and her." }],
+    boss:    [{ scene: "throne", text: "Akuma is waiting. He knew you would come. He smiles." }],
+    victory: [{ scene: "reunion", text: "The dungeon door swings open. Mariko stands in the torchlight — weary, but unbroken. You have her. It is enough." }]
   };
   var CUT_PANEL_DUR = 5.5;         // seconds each panel auto-holds (tap to advance)
   var FADE_DUR = 0.45;             // fade-to-black duration on transitions
