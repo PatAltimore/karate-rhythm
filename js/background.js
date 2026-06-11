@@ -1000,15 +1000,16 @@ KR.bg = (function () {
       cutFloor(ctx, gy, "#2a1c12", "#120c08");
       SP.fighter(ctx, 60, gy, { facing: 1, pose: "run", phase: t * 1.6 }); // walking
     } else if (scene === "river") {
-      var sc2 = t * 18;
+      var bgSc = Math.min(t, 2.0) * 18;        // platform/ridge scroll — freezes when hero stops
+      var guardSc = Math.min(t * 18, 66);      // guard scroll — stops first guard at ~x=90, clear of the hero
       cutSky(ctx, "blood");
-      ridge(ctx, sc2, 0.18, 116, 26, 46, "#3a1e3a", 9);
+      ridge(ctx, bgSc, 0.18, 116, 26, 46, "#3a1e3a", 9);
       cutCastle(ctx, 214, 118, 2.3);
-      ridge(ctx, sc2, 0.4, 134, 18, 34, "#1f1426", 40);
-      bridge(ctx, sc2); water(ctx, sc2); piers(ctx, sc2);
+      ridge(ctx, bgSc, 0.4, 134, 18, 34, "#1f1426", 40);
+      bridge(ctx, bgSc); water(ctx, bgSc); piers(ctx, bgSc);
       var riverPose = t < 2.0 ? "run" : t < 2.5 ? "idle" : "bow";
       SP.fighter(ctx, 56, gy, { facing: 1, pose: riverPose, phase: t * 1.6 });
-      // Army of guards scroll with the world toward the hero
+      // Army of guards — use unthrottled scroll so they keep sliding in after the platform stops
       var armyDefs = [
         { dx: 156, kit: EK[0] },
         { dx: 192, kit: EK[1], rank: 1 },
@@ -1019,7 +1020,7 @@ KR.bg = (function () {
       ];
       for (var gi = 0; gi < armyDefs.length; gi++) {
         var gd = armyDefs[gi];
-        SP.fighter(ctx, gd.dx - sc2, bob(gi + 1), { facing: -1, pose: "idle", kit: gd.kit, rank: gd.rank });
+        SP.fighter(ctx, gd.dx - guardSc, bob(gi + 1), { facing: -1, pose: "idle", kit: gd.kit, rank: gd.rank });
       }
     } else if (scene === "gates") {
       cutSky(ctx, "night");
