@@ -1006,7 +1006,8 @@ KR.bg = (function () {
       cutCastle(ctx, 214, 118, 2.3);
       ridge(ctx, sc2, 0.4, 134, 18, 34, "#1f1426", 40);
       bridge(ctx, sc2); water(ctx, sc2); piers(ctx, sc2);
-      SP.fighter(ctx, 56, gy, { facing: 1, pose: "run", phase: t * 1.6 }); // hero walks in place
+      var riverPose = t < 2.0 ? "run" : t < 2.5 ? "idle" : "bow";
+      SP.fighter(ctx, 56, gy, { facing: 1, pose: riverPose, phase: t * 1.6 });
       // Army of guards scroll with the world toward the hero
       var armyDefs = [
         { dx: 156, kit: EK[0] },
@@ -1026,7 +1027,7 @@ KR.bg = (function () {
       cutCastle(ctx, 140, 118, 3.2);
       cutFloor(ctx, gy, "#191222", "#0c0810");
       grandGate(ctx, 140, gy);
-      SP.fighter(ctx, 52, bob(0), { facing: 1, pose: "idle" });
+      SP.fighter(ctx, 52, t < 4.5 ? bob(0) : gy, { facing: 1, pose: t < 4.5 ? "idle" : "bow" });
       SP.fighter(ctx, 108, bob(1), { facing: -1, pose: "idle", kit: EK[2], rank: 2 });
       SP.fighter(ctx, 172, bob(3), { facing: -1, pose: "idle", kit: EK[1], rank: 2 });
     } else if (scene === "throne") {
