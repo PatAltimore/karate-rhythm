@@ -65,14 +65,14 @@
   var CUTSCENES = {
     intro: [
       { scene: "castle",  text: "The warlord Akuma has seized the mountain fortress. By dawn, Mariko's fate will be sealed." },
-      { scene: "dungeon", text: "Deep in the keep, Mariko waits in silence. Her lamp is burning low." },
+      { scene: "dungeon", text: "Deep in the keep, Mariko waits in silence. Her lamp is burning low.", music: "mariko" },
       { scene: "setout",  text: "You go alone. At dusk. Armed with nothing but your discipline and the rhythm in your blood." },
       { scene: "cliff",   text: "The cliff brings you to the palace road. Somewhere beyond Akuma's wall, Mariko is still alive." }
     ],
     act2:    [{ scene: "river",  text: "Past the river, his warriors grow fierce. They have trained for years for men like you." }],
     act3:    [{ scene: "gates",  text: "The inner gate. His deadliest guard holds this ground. One more wall between you and her." }],
     boss:    [{ scene: "throne", text: "Akuma is waiting. He knew you would come. He smiles." }],
-    victory: [{ scene: "reunion", text: "The dungeon door swings open. Mariko stands in the torchlight — weary, but unbroken. You have her. It is enough." }]
+    victory: [{ scene: "reunion", text: "The dungeon door swings open. Mariko stands in the torchlight — weary, but unbroken. You have her. It is enough.", music: "mariko" }]
   };
   var CUT_PANEL_DUR = 5.5;         // seconds each panel auto-holds (tap to advance)
   var FADE_DUR = 0.45;             // fade-to-black duration on transitions
@@ -704,8 +704,13 @@
     showCutPanel();
   }
   function showCutPanel() {
-    if (cutsceneTextEl) cutsceneTextEl.textContent = cutscene.panels[cutscene.index].text;
+    var panel = cutscene.panels[cutscene.index];
+    if (cutsceneTextEl) cutsceneTextEl.textContent = panel.text;
     if (cutsceneEl) cutsceneEl.classList.remove("hidden");
+    if (panel.music === "mariko" && audio.playMarikoSong) {
+      audio.stop();
+      audio.playMarikoSong();
+    }
   }
   function cutsceneAdvance() {
     if (!cutscene) return;
@@ -1084,7 +1089,7 @@
     strength = 0;
     audio.stop();
     if (audio.setBossMode) audio.setBossMode(false);
-    audio.playGameOver();
+    if (audio.playDefeated) audio.playDefeated(); else audio.playGameOver();
 
     best = Math.max(best, score);
     try { localStorage.setItem("kr_best", String(best)); } catch (e) {}

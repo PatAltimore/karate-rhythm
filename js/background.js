@@ -1066,6 +1066,9 @@ KR.bg = (function () {
       ctx.fillRect(cEdge, cy, WIDTH - cEdge, 1);
       for (var cpx = cEdge; cpx < WIDTH; cpx += 11)
         ctx.fillRect(Math.round(cpx), cy, 1, 10);
+      // Guard stands on the right platform watching the cliff edge
+      var cliffBob = cy - (0.5 + 0.5 * Math.sin(t * 2.4 + 3));
+      SP.fighter(ctx, 235, cliffBob, { facing: -1, pose: "idle", kit: EK[2], rank: 1 });
       // Hero climbs from below the screen up to the cliff top
       var climbFrac = Math.min(1, t / 3.8);
       var climbEase = 1 - (1 - climbFrac) * (1 - climbFrac); // ease-out
@@ -1079,8 +1082,8 @@ KR.bg = (function () {
         SP.fighter(ctx, 0, 0, { facing: 1, pose: "run", phase: t * 2.4 });
         ctx.restore();
       } else {
-        // Arrived: stand idle on the platform
-        SP.fighter(ctx, cEdge + 8, cy, { facing: 1, pose: "idle" });
+        // Arrived: brief idle, then bow to the guard
+        SP.fighter(ctx, cEdge + 8, cy, { facing: 1, pose: t < 4.3 ? "idle" : "bow" });
       }
     } else if (scene === "dawn") {
       cutSky(ctx, "dawn");

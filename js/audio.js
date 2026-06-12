@@ -753,6 +753,95 @@ KR.audio = (function () {
     }
   }
 
+  // ---- Cinematic stings -----------------------------------------------
+
+  // Quick ascending fanfare — plays over gameplay music when the hero runs off after clearing an act.
+  function playHeroFanfare() {
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    var notes = [392.00, 523.25, 659.25, 783.99];
+    for (var i = 0; i < notes.length; i++) {
+      var t = t0 + i * 0.11;
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "square"; o.frequency.value = notes[i];
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.15, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + (i === 3 ? 0.45 : 0.18));
+      o.connect(g); g.connect(sfxGain);
+      o.start(t); o.stop(t + (i === 3 ? 0.48 : 0.22));
+    }
+  }
+
+  // Slow mournful descent — plays when the hero is defeated.
+  function playDefeated() {
+    if (!ctx) return;
+    var t0 = ctx.currentTime;
+    // Low thud impact
+    var ob = ctx.createOscillator(), gb = ctx.createGain();
+    ob.type = "sine";
+    ob.frequency.setValueAtTime(110, t0); ob.frequency.exponentialRampToValueAtTime(36, t0 + 0.28);
+    gb.gain.setValueAtTime(0.65, t0); gb.gain.exponentialRampToValueAtTime(0.001, t0 + 0.38);
+    ob.connect(gb); gb.connect(sfxGain); ob.start(t0); ob.stop(t0 + 0.40);
+    // Descending minor melody
+    var seq = [[440, 0.45, 0.55], [392, 1.0, 0.45], [349.23, 1.45, 0.45],
+               [293.66, 1.9, 0.55], [261.63, 2.45, 0.55], [220, 3.05, 2.0]];
+    for (var i = 0; i < seq.length; i++) {
+      var t = t0 + seq[i][1], dur = seq[i][2];
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.value = seq[i][0];
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.22, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t + dur + 0.05);
+    }
+  }
+
+  // Mariko's leitmotif — D pentatonic minor koto melody, ~13 seconds.
+  // Played during the dungeon panel and the reunion ending.
+  function playMarikoSong() {
+    if (!ctx) return;
+    var t0 = ctx.currentTime + 0.15;
+    // Opening bell on D
+    kaneBell(293.66, t0);
+    // Bass koto anchors
+    kotoPluck(146.83, t0);
+    kotoPluck(146.83, t0 + 6.5);
+    // Closing bell
+    kaneBell(587.33, t0 + 11.0);
+    // Melody — triangle oscillator + inharmonic shimmer (koto timbre)
+    var mel = [
+      [587.33, 0.0,  1.8],   // D5 — long opening breath
+      [880.00, 2.2,  0.7],   // A5 — upward leap
+      [783.99, 3.0,  0.6],   // G5
+      [698.46, 3.7,  0.7],   // F5
+      [587.33, 4.5,  2.0],   // D5 — return
+      [698.46, 6.8,  0.5],   // F5 — second phrase
+      [783.99, 7.4,  0.5],   // G5
+      [880.00, 8.0,  0.7],   // A5
+      [1046.5, 8.8,  1.0],   // C6 — peak
+      [880.00, 9.9,  0.5],   // A5
+      [783.99, 10.5, 0.4],   // G5
+      [587.33, 11.0, 2.8],   // D5 — final
+    ];
+    for (var mi = 0; mi < mel.length; mi++) {
+      (function(freq, off, decay) {
+        var t = t0 + off;
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "triangle"; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.18, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.001, t + decay);
+        o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + decay + 0.06);
+        var o2 = ctx.createOscillator(), g2 = ctx.createGain();
+        o2.type = "sine"; o2.frequency.value = freq * 2.006;
+        g2.gain.setValueAtTime(0.0001, t);
+        g2.gain.linearRampToValueAtTime(0.06, t + 0.012);
+        g2.gain.exponentialRampToValueAtTime(0.001, t + decay * 0.38);
+        o2.connect(g2); g2.connect(musicGain); o2.start(t); o2.stop(t + decay * 0.38 + 0.06);
+      })(mel[mi][0], mel[mi][1], mel[mi][2]);
+    }
+  }
+
   // ---- Transport -------------------------------------------------------
   function start() {
     cutsceneMode = false;
@@ -816,6 +905,9 @@ KR.audio = (function () {
     playTaiko: playTaiko,
     playMiss: playMiss,
     playGameOver: playGameOver,
+    playDefeated: playDefeated,
+    playHeroFanfare: playHeroFanfare,
+    playMarikoSong: playMarikoSong,
     playVictory: playVictory,
     toggleMute: toggleMute,
     setBossMode: setBossMode,
