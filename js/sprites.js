@@ -250,6 +250,94 @@ KR.sprites = (function () {
     r(ctx, 5, -17, 2, 6, k.giSh);   r(ctx, 5, -12, 2, 2, k.skin);
   }
 
+  // Climb pose: hero scaling a vertical cliff face.
+  // HIGH arm reaches up to next hold; LOW arm extends horizontally to grip a side hold.
+  // Phase drives the arm/leg alternation cycle.
+  function drawClimb(ctx, k, phase) {
+    var hi = Math.sin(phase) > 0;
+
+    // Legs: feet pressed against cliff face (positive x = toward cliff)
+    if (hi) {
+      r(ctx,  0, -9, 3, 4, k.gi);       // front thigh short (knee raised)
+      r(ctx,  2, -5, 3, 5, k.gi);       // front shin angling toward cliff
+      r(ctx,  4,  0, 3, 2, k.skin);     // front foot on upper hold
+      r(ctx, -2, -10, 3, 8, k.giSh);    // rear leg extended, pushing off
+      r(ctx,  1,   0, 3, 2, k.skin);    // rear foot on lower hold
+    } else {
+      r(ctx,  0, -10, 3, 8, k.gi);
+      r(ctx,  3,   0, 3, 2, k.skin);
+      r(ctx, -2,  -9, 3, 4, k.giSh);
+      r(ctx,  0,  -5, 3, 5, k.giSh);
+      r(ctx,  3,   0, 3, 2, k.skin);
+    }
+
+    // Belt and torso
+    r(ctx, -3, -12, 7, 2, k.band);
+    r(ctx, -3, -20, 6, 8, k.gi);
+    r(ctx, -3, -20, 2, 8, k.giSh);
+
+    // Head
+    r(ctx,  0, -27, 7, 7, k.skin);
+    r(ctx,  0, -27, 7, 3, k.hair);
+    r(ctx,  6, -25, 1, 2, k.hair);
+    r(ctx,  4, -22, 1, 1, PAL.black);
+
+    // Arms alternate between two distinct holds on the cliff face.
+    // hi=true:  front arm fully extended to HIGH-RIGHT hold; rear arm pulled to waist.
+    // hi=false: rear arm reaching to LOWER-CENTER hold; front arm bent at chest.
+    if (hi) {
+      r(ctx,  4, -37, 3, 17, k.gi);    // front arm — full reach up-right to top hold
+      r(ctx,  6, -38, 4,  2, k.skin);  // front hand on high hold (far right)
+      r(ctx, -1, -20, 3,  7, k.giSh);  // rear arm — pulled all the way down to waist
+      r(ctx,  1, -14, 4,  2, k.skin);  // rear hand at waist
+    } else {
+      r(ctx,  1, -33, 3, 13, k.giSh);  // rear arm — reaching to a closer center hold
+      r(ctx,  2, -34, 4,  2, k.skin);  // rear hand on center hold (4px lower, 4px left)
+      r(ctx,  2, -20, 3,  8, k.gi);    // front arm — bent at chest, driving up next
+      r(ctx,  4, -13, 4,  2, k.skin);  // front hand at chest
+    }
+  }
+
+  // Hang pose: hero grips the platform ledge, body rises as frac goes 0→1.
+  // Hands are always at local y=-37 (world y=cy, the ledge top) — they never move.
+  // frac=0: fully hanging (shoulder 17px below ledge, feet 37px below)
+  // frac=1: pulled up (shoulder 20px above ledge, feet at ledge level)
+  function drawHang(ctx, k, frac) {
+    var pe  = frac * frac;                         // ease-in
+    var sh  = Math.round(-(20 + 37 * pe));         // shoulder local y: -20 → -57
+    var ft  = Math.round(-37 * pe);                // feet local y:      0  → -37
+
+    // Arms: span between hands (local -37) and shoulder (sh)
+    var aTop = Math.min(-37, sh), aBot = Math.max(-37, sh);
+    if (aBot > aTop) {
+      r(ctx, -1, aTop, 3, aBot - aTop, k.giSh);
+      r(ctx,  2, aTop, 3, aBot - aTop, k.gi);
+    }
+
+    // Hands gripping ledge — always at local y=-37
+    r(ctx, -1, -37, 3, 2, k.skin);
+    r(ctx,  2, -37, 3, 2, k.skin);
+
+    // Torso and belt (follow shoulder)
+    r(ctx, -3, sh,     6, 8, k.gi);
+    r(ctx, -3, sh,     2, 8, k.giSh);
+    r(ctx, -3, sh + 8, 7, 2, k.band);
+
+    // Head (above shoulder)
+    r(ctx,  0, sh - 7, 7, 7, k.skin);
+    r(ctx,  0, sh - 7, 7, 3, k.hair);
+    r(ctx,  6, sh - 5, 1, 2, k.hair);
+    r(ctx,  3, sh - 3, 1, 1, PAL.black);
+
+    // Legs (10px, feet rise with body)
+    var lt = sh + 10;
+    if (ft > lt) {
+      r(ctx, -2, lt, 3, ft - lt, k.giSh);
+      r(ctx,  1, lt, 3, ft - lt, k.gi);
+    }
+    r(ctx, -1, ft, 5, 2, k.skin);
+  }
+
   // Head/torso top-left anchors per pose, for the helmet/armour overlay.
   var ANCHOR = {
     run:   { head: { x: -3, y: -25 }, torso: { x: -3, y: -18 } },
@@ -317,6 +405,8 @@ KR.sprites = (function () {
     else if (pose === "punch") drawPunch(ctx, k);
     else if (pose === "block") drawBlock(ctx, k);
     else if (pose === "bow") drawBow(ctx, k);
+    else if (pose === "hang") drawHang(ctx, k, opts.phase || 0);
+    else if (pose === "climb") drawClimb(ctx, k, opts.phase || 0);
     else drawRun(ctx, k, opts.phase || 0);
 
     if (opts.rank) {

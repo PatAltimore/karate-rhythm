@@ -1040,50 +1040,87 @@ KR.bg = (function () {
       // Hero scales a sheer cliff face (left) to reach the palace road platform (right).
       cutSky(ctx, "dusk");
       var cEdge = 190;
-      var cy = 108; // cliff-top level (where ledge meets the platform on the right)
-      // Cliff face fills the entire LEFT portion so the hero is always on rock while climbing
+      var cy = 108; // cliff-top level
+      var CLIMB_DUR = 3.8, STAND_DUR = 0.85, WALK_DUR = 0.44, BOW_T = CLIMB_DUR + STAND_DUR + WALK_DUR;
+
+      // Distant mountain ridges — hero is far above them
+      ridge(ctx, 0, 0.08, 128, 24, 54, "#2e2244", 5);
+      ridge(ctx, 0, 0.20, 138, 16, 38, "#221a38", 23);
+
+      // Dark terrain/earth below the mountain ridges
+      ctx.fillStyle = "#12101c";
+      ctx.fillRect(0, gy, cEdge - 18, HEIGHT - gy);
+
+      // Narrow rock column — below platform level only (cliff ends at platform)
       ctx.fillStyle = "#1c1530";
-      ctx.fillRect(0, 0, cEdge, HEIGHT);
-      // Rocky strata texture spread across full cliff height
+      ctx.fillRect(cEdge - 18, cy, 18, HEIGHT - cy);
       ctx.fillStyle = "#2a2046";
-      var strata = [7, 24, 40, 57, 74, 91, 110, 128, 148, 165];
-      for (var si = 0; si < strata.length; si++) {
-        ctx.fillRect(10 + (si % 5) * 38, strata[si], 18 + (si * 11) % 36, 1);
-      }
-      ctx.fillStyle = "#342d54"; // lighter highlight stripe mid-cliff
-      ctx.fillRect(110, 20, 10, HEIGHT - 20);
-      ctx.fillStyle = "#0e0b1a"; // deep shadow crack at cliff-platform edge
-      ctx.fillRect(cEdge - 3, 0, 4, HEIGHT);
-      // Cliff top ledge — shows cliff ending at the same level as the platform on the right
+      var strata = [8, 22, 38, 54, 60];
+      for (var si = 0; si < strata.length; si++)
+        ctx.fillRect(cEdge - 18, cy + strata[si], 8 + (si * 7) % 10, 1);
+      // Climb surface — catch-light on the right face
+      ctx.fillStyle = "#28204a";
+      ctx.fillRect(cEdge - 14, cy, 12, HEIGHT - cy);
+      ctx.fillStyle = "#342d54";
+      ctx.fillRect(cEdge - 6, cy, 4, HEIGHT - cy);
+      ctx.fillStyle = "#0e0b1a";
+      ctx.fillRect(cEdge - 2, cy, 3, HEIGHT - cy);
+
+      // Stone cliff face below the right platform
+      ctx.fillStyle = "#1c1530";
+      ctx.fillRect(cEdge, cy + 10, WIDTH - cEdge, HEIGHT - cy - 10);
+      ctx.fillStyle = "#2a2046";
+      var rSt = [cy + 18, cy + 34, cy + 52, cy + 70, cy + 88];
+      for (var ri = 0; ri < rSt.length; ri++)
+        ctx.fillRect(cEdge + 4, rSt[ri], 12 + (ri * 9) % 18, 1);
+      ctx.fillStyle = "#0e0b1a";
+      ctx.fillRect(cEdge + 14, cy + 10, 2, HEIGHT - cy - 10);
+
+      // Brown timber platform top only
       ctx.fillStyle = "#7a5630";
-      ctx.fillRect(0, cy, cEdge, 10);
-      ctx.fillStyle = "#a8763e";
-      ctx.fillRect(0, cy, cEdge, 1);
-      // Platform/ground on the RIGHT — where hero arrives (upper right shows dusk sky via cutSky)
-      ctx.fillStyle = "#7a5630";
-      ctx.fillRect(cEdge, cy, WIDTH - cEdge, HEIGHT - cy);
+      ctx.fillRect(cEdge, cy, WIDTH - cEdge, 10);
       ctx.fillStyle = "#a8763e";
       ctx.fillRect(cEdge, cy, WIDTH - cEdge, 1);
       for (var cpx = cEdge; cpx < WIDTH; cpx += 11)
         ctx.fillRect(Math.round(cpx), cy, 1, 10);
-      // Guard stands on the right platform watching the cliff edge
+
+      // Guard watching from the platform
       var cliffBob = cy - (0.5 + 0.5 * Math.sin(t * 2.4 + 3));
-      SP.fighter(ctx, 235, cliffBob, { facing: -1, pose: "idle", kit: EK[2], rank: 1 });
-      // Hero climbs from below the screen up to the cliff top
-      var climbFrac = Math.min(1, t / 3.8);
+      SP.fighter(ctx, 260, cliffBob, { facing: -1, pose: "idle", kit: EK[2], rank: 1 });
+
+      // ---- Hero animation ----
+      var climbFrac = Math.min(1, t / CLIMB_DUR);
       var climbEase = 1 - (1 - climbFrac) * (1 - climbFrac); // ease-out
-      var hcy = Math.round(HEIGHT + 14 - (HEIGHT + 14 - cy) * climbEase);
+      // Climb phase ends when hero's hands reach the ledge (feetY = cy + 37)
+      var hcy = Math.round(HEIGHT + 14 - (HEIGHT + 14 - (cy + 37)) * climbEase);
+
       if (climbFrac < 1) {
-        // Lean angle eases from steep (bottom of cliff) to gentler (near the top)
-        var leanAngle = -Math.PI * (0.35 - 0.12 * climbEase);
+        // Hero climbs cliff — lean fades to upright as hands approach the ledge
+        var lean = 0.28 * (1 - climbEase);
         ctx.save();
-        ctx.translate(cEdge - 10, hcy);
-        ctx.rotate(leanAngle);
-        SP.fighter(ctx, 0, 0, { facing: 1, pose: "run", phase: t * 2.4 });
+        ctx.translate(cEdge - 16, hcy);
+        ctx.rotate(lean);
+        SP.fighter(ctx, 0, 0, { facing: 1, pose: "climb", phase: climbEase * 18 });
         ctx.restore();
+      } else if (t < CLIMB_DUR + STAND_DUR) {
+        var sf = (t - CLIMB_DUR) / STAND_DUR;
+        if (sf < 0.55) {
+          // Pull-up: feetY fixed at cy+37 so local y=-37 = world cy (ledge) never moves.
+          // drawHang shifts body upward via frac while hands stay anchored to the ledge.
+          var pullFrac = sf / 0.55;
+          SP.fighter(ctx, cEdge - 10, cy + 37, { facing: 1, pose: "hang", phase: pullFrac });
+        } else {
+          // Crested — step right and stand upright on platform
+          var standFrac = (sf - 0.55) / 0.45;
+          SP.fighter(ctx, Math.round(cEdge - 10 + standFrac * 20), cy, { facing: 1, pose: "idle" });
+        }
+      } else if (t < BOW_T) {
+        // Walk toward the guard
+        var wf = Math.min(1, (t - (CLIMB_DUR + STAND_DUR)) / WALK_DUR);
+        SP.fighter(ctx, Math.round(cEdge + 10 + wf * 20), cy, { facing: 1, pose: "run", phase: t * 7 });
       } else {
-        // Arrived: brief idle, then bow to the guard
-        SP.fighter(ctx, cEdge + 8, cy, { facing: 1, pose: t < 4.3 ? "idle" : "bow" });
+        // Bow to the guard
+        SP.fighter(ctx, cEdge + 30, cy, { facing: 1, pose: "bow" });
       }
     } else if (scene === "dawn") {
       cutSky(ctx, "dawn");
