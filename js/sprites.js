@@ -286,13 +286,13 @@ KR.sprites = (function () {
     // hi=true:  front arm fully extended to HIGH-RIGHT hold; rear arm pulled to waist.
     // hi=false: rear arm reaching to LOWER-CENTER hold; front arm bent at chest.
     if (hi) {
-      r(ctx,  4, -37, 3, 17, k.gi);    // front arm — full reach up-right to top hold
-      r(ctx,  6, -38, 4,  2, k.skin);  // front hand on high hold (far right)
-      r(ctx, -1, -20, 3,  7, k.giSh);  // rear arm — pulled all the way down to waist
+      r(ctx,  4, -29, 3,  9, k.gi);    // front arm — reaching just above head
+      r(ctx,  6, -30, 4,  2, k.skin);  // front hand on high hold
+      r(ctx, -1, -20, 3,  7, k.giSh);  // rear arm — pulled down to waist
       r(ctx,  1, -14, 4,  2, k.skin);  // rear hand at waist
     } else {
-      r(ctx,  1, -33, 3, 13, k.giSh);  // rear arm — reaching to a closer center hold
-      r(ctx,  2, -34, 4,  2, k.skin);  // rear hand on center hold (4px lower, 4px left)
+      r(ctx,  1, -27, 3,  7, k.giSh);  // rear arm — reaching to a slightly lower hold
+      r(ctx,  2, -28, 4,  2, k.skin);  // rear hand on hold (4px lower than hi=true)
       r(ctx,  2, -20, 3,  8, k.gi);    // front arm — bent at chest, driving up next
       r(ctx,  4, -13, 4,  2, k.skin);  // front hand at chest
     }
