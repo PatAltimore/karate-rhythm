@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Karate Rhythm</title>
+  <defs>
+
+    <!-- Synthwave sky: deep violet at top, hot pink at horizon -->
+    <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#08001c"/>
+      <stop offset="38%"  stop-color="#30006a"/>
+      <stop offset="65%"  stop-color="#880090"/>
+      <stop offset="82%"  stop-color="#cc0068"/>
+      <stop offset="100%" stop-color="#ff3848"/>
+    </linearGradient>
+
+    <!-- Retro sun: bright yellow-white core bleeding to hot pink rim -->
+    <radialGradient id="sunG" cx="50%" cy="28%" r="62%">
+      <stop offset="0%"   stop-color="#fff8c0"/>
+      <stop offset="30%"  stop-color="#ffaa40"/>
+      <stop offset="65%"  stop-color="#ff4060"/>
+      <stop offset="100%" stop-color="#cc0058"/>
+    </radialGradient>
+
+    <!-- Clip the sun stripes to the circle -->
+    <clipPath id="sunClip">
+      <circle cx="256" cy="315" r="185"/>
+    </clipPath>
+
+    <!-- Ground base: very dark purple -->
+    <linearGradient id="groundG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0a0020"/>
+      <stop offset="100%" stop-color="#04000c"/>
+    </linearGradient>
+
+    <!-- Neon glow: two blur layers + sharp shape -->
+    <filter id="glow" x="-45%" y="-45%" width="190%" height="190%"
+            color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4"  result="b2"/>
+      <feMerge>
+        <feMergeNode in="b1"/>
+        <feMergeNode in="b2"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Softer pink glow for the grid -->
+    <filter id="gridGlow" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+  </defs>
+
+  <!-- ─── SKY ─── -->
+  <rect width="512" height="512" fill="url(#skyG)"/>
+
+  <!-- ─── STARS (upper sky) ─── -->
+  <g fill="white">
+    <circle cx="42"  cy="36"  r="1.5" opacity="0.9"/>
+    <circle cx="98"  cy="18"  r="1"   opacity="0.7"/>
+    <circle cx="158" cy="52"  r="1.5" opacity="0.8"/>
+    <circle cx="72"  cy="78"  r="1"   opacity="0.6"/>
+    <circle cx="206" cy="30"  r="1"   opacity="0.7"/>
+    <circle cx="340" cy="22"  r="1.5" opacity="0.8"/>
+    <circle cx="388" cy="58"  r="1"   opacity="0.6"/>
+    <circle cx="440" cy="38"  r="1.5" opacity="0.9"/>
+    <circle cx="470" cy="80"  r="1"   opacity="0.7"/>
+    <circle cx="310" cy="68"  r="1"   opacity="0.5"/>
+    <circle cx="28"  cy="112" r="1"   opacity="0.5"/>
+    <circle cx="500" cy="55"  r="1"   opacity="0.6"/>
+  </g>
+
+  <!-- ─── OUTRUN SUN with horizontal stripe cutouts ─── -->
+  <g clip-path="url(#sunClip)">
+    <circle cx="256" cy="315" r="185" fill="url(#sunG)"/>
+    <!-- Stripes: progressively wider downward (perspective illusion) -->
+    <rect x="0" y="268" width="512" height="6"  fill="#08001c"/>
+    <rect x="0" y="282" width="512" height="7"  fill="#08001c"/>
+    <rect x="0" y="297" width="512" height="8"  fill="#08001c"/>
+    <rect x="0" y="313" width="512" height="9"  fill="#08001c"/>
+    <rect x="0" y="330" width="512" height="11" fill="#08001c"/>
+    <rect x="0" y="349" width="512" height="13" fill="#08001c"/>
+    <rect x="0" y="370" width="512" height="15" fill="#08001c"/>
+    <rect x="0" y="393" width="512" height="18" fill="#08001c"/>
+    <rect x="0" y="419" width="512" height="22" fill="#08001c"/>
+    <rect x="0" y="450" width="512" height="27" fill="#08001c"/>
+    <rect x="0" y="486" width="512" height="35" fill="#08001c"/>
+  </g>
+
+  <!-- ─── GROUND + PERSPECTIVE GRID ─── -->
+  <!-- Dark ground base below horizon -->
+  <rect x="0" y="400" width="512" height="112" fill="url(#groundG)"/>
+
+  <!-- Grid lines (pink glow) -->
+  <g filter="url(#gridGlow)" stroke="#ff1060" fill="none">
+    <!-- Horizontal receding lines -->
+    <line x1="0" y1="410" x2="512" y2="410" stroke-width="1"   opacity="0.85"/>
+    <line x1="0" y1="424" x2="512" y2="424" stroke-width="1.2" opacity="0.70"/>
+    <line x1="0" y1="441" x2="512" y2="441" stroke-width="1.5" opacity="0.55"/>
+    <line x1="0" y1="462" x2="512" y2="462" stroke-width="1.8" opacity="0.42"/>
+    <line x1="0" y1="488" x2="512" y2="488" stroke-width="2"   opacity="0.30"/>
+    <!-- Perspective lines radiating from VP at (256, 400) -->
+    <line x1="256" y1="400" x2="0"   y2="512" stroke-width="1" opacity="0.6"/>
+    <line x1="256" y1="400" x2="65"  y2="512" stroke-width="1" opacity="0.55"/>
+    <line x1="256" y1="400" x2="128" y2="512" stroke-width="1" opacity="0.5"/>
+    <line x1="256" y1="400" x2="192" y2="512" stroke-width="1" opacity="0.45"/>
+    <line x1="256" y1="400" x2="256" y2="512" stroke-width="1" opacity="0.45"/>
+    <line x1="256" y1="400" x2="320" y2="512" stroke-width="1" opacity="0.45"/>
+    <line x1="256" y1="400" x2="384" y2="512" stroke-width="1" opacity="0.5"/>
+    <line x1="256" y1="400" x2="448" y2="512" stroke-width="1" opacity="0.55"/>
+    <line x1="256" y1="400" x2="512" y2="512" stroke-width="1" opacity="0.6"/>
+  </g>
+
+  <!-- ─── FIGHTER SILHOUETTE: electric cyan, neon glow ─── -->
+  <g filter="url(#glow)" fill="#00e8ff">
+    <!-- Kick leg — the dominant shape, reads at all sizes -->
+    <polygon points="180,248 194,284 462,208 448,172"/>
+    <!-- Foot block at kick end -->
+    <polygon points="448,163 476,155 480,198 452,206"/>
+
+    <!-- Head -->
+    <circle cx="144" cy="108" r="45"/>
+
+    <!-- Torso -->
+    <rect x="114" y="146" width="94" height="120" rx="10"
+          transform="rotate(-3 161 206)"/>
+
+    <!-- Support leg — upper thigh -->
+    <rect x="152" y="264" width="46" height="128" rx="12"
+          transform="rotate(9 175 328)"/>
+    <!-- Shin -->
+    <rect x="160" y="383" width="42" height="74" rx="10"
+          transform="rotate(-5 181 420)"/>
+    <!-- Foot -->
+    <rect x="146" y="447" width="70" height="24" rx="10"/>
+
+    <!-- Back arm (chambered) -->
+    <polygon points="114,170 135,184 72,272 51,258"/>
+
+    <!-- Front arm (guard) -->
+    <polygon points="204,153 219,169 314,141 299,125"/>
+  </g>
+
+  <!-- Belt: hot pink accent — contrasts the cyan, adds a pop of color -->
+  <rect x="103" y="237" width="112" height="19" rx="4" fill="#ff00aa"
+        transform="rotate(-3 159 246)" filter="url(#glow)"/>
+
+</svg>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Export apple-touch-icon.png</title>
+  <style>
+    body { font: 14px/1.6 monospace; background: #1a1a2e; color: #ccc; display: flex;
+           flex-direction: column; align-items: center; justify-content: center;
+           min-height: 100vh; gap: 20px; margin: 0; }
+    canvas { border: 1px solid #444; image-rendering: pixelated; }
+    button  { font: 14px monospace; background: #ff00aa; color: #fff; border: none;
+               padding: 10px 28px; cursor: pointer; letter-spacing: 0.05em; }
+    button:hover { background: #ff40cc; }
+    p { margin: 0; color: #888; }
+  </style>
+</head>
+<body>
+  <p>apple-touch-icon.png export helper — delete this file after use</p>
+  <canvas id="c" width="512" height="512"></canvas>
+  <button onclick="dl()">Download apple-touch-icon.png</button>
+  <script>
+    var img = new Image();
+    img.onload = function () {
+      document.getElementById('c').getContext('2d').drawImage(img, 0, 0, 512, 512);
+    };
+    img.src = 'icon.svg';
+
+    function dl() {
+      var a = document.createElement('a');
+      a.href = document.getElementById('c').toDataURL('image/png');
+      a.download = 'apple-touch-icon.png';
+      a.click();
+    }
+  </script>
+</body>
+</html>
