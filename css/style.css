@@ -9,6 +9,7 @@
   --violet: #8a6bd0;
   --danger: #c0303a;
   --pixel: "Courier New", "Lucida Console", monospace;
+  --brush: "Zen Old Mincho", "Noto Serif JP", Georgia, serif;
 }
 
 * { box-sizing: border-box; }
@@ -188,11 +189,13 @@ html, body {
 }
 
 .vict-title {
-  font-size: clamp(1.4rem, 5vw, 2.4rem);
+  font-family: var(--brush);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 5.5vw, 2.8rem);
   color: var(--amber);
-  text-shadow: 2px 2px 0 #000, 0 0 10px rgba(224, 160, 32, 0.45);
+  text-shadow: 2px 2px 0 #000, 0 0 16px rgba(224, 160, 32, 0.55);
   margin: 0 0 0.4em;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 /* Story cut-scenes: the scene is on the canvas; this is the narration box */
@@ -210,13 +213,16 @@ html, body {
   background: linear-gradient(to top, rgba(8, 6, 12, 0.94) 55%, rgba(8, 6, 12, 0));
 }
 #cutscene-text {
+  font-family: var(--brush);
+  font-weight: 700;
   margin: 0 auto;
-  max-width: 32em;
-  font-size: clamp(0.85rem, 2.4vw, 1.25rem);
-  line-height: 1.5;
+  max-width: 30em;
+  font-size: clamp(0.95rem, 2.6vw, 1.35rem);
+  line-height: 1.65;
   text-align: center;
   color: #ece4cc;
-  text-shadow: 1px 1px 0 #000;
+  letter-spacing: 0.04em;
+  text-shadow: 1px 1px 0 #000, 0 0 18px rgba(0,0,0,0.6);
 }
 .cut-hint {
   display: block;
@@ -244,37 +250,39 @@ html, body {
 
 .popup {
   position: absolute;
-  font-weight: bold;
-  font-size: 0.9em;
+  font-family: var(--brush);
+  font-weight: 900;
+  font-size: 1.0em;
+  letter-spacing: 0.08em;
   text-shadow: 1px 1px 0 #000;
   transform: translate(-50%, -50%);
   animation: floatUp 0.7s ease-out forwards;
   white-space: nowrap;
 }
-.popup.perfect { color: var(--amber); }
-.popup.good { color: var(--green); }
-.popup.miss { color: var(--danger); }
+.popup.perfect { color: var(--amber); text-shadow: 1px 1px 0 #000, 0 0 8px rgba(224,160,32,0.6); }
+.popup.good    { color: var(--green);  text-shadow: 1px 1px 0 #000, 0 0 8px rgba(47,188,106,0.5); }
+.popup.miss    { color: var(--danger); text-shadow: 1px 1px 0 #000, 0 0 8px rgba(192,48,58,0.5); }
 .popup.level {
   color: var(--amber);
-  font-size: 1.7em;
-  letter-spacing: 0.14em;
-  text-shadow: 2px 2px 0 #2a0f0a, 0 0 8px rgba(224, 160, 32, 0.5);
+  font-size: 1.9em;
+  letter-spacing: 0.18em;
+  text-shadow: 3px 3px 0 #2a0f0a, 0 0 14px rgba(224, 160, 32, 0.65);
   animation: levelBanner 1.3s ease-out forwards;
 }
-/* Feint-caught: big angry red banner — you fell for it */
+/* Feint-caught: big angry red banner */
 .popup.feint {
   color: var(--danger);
-  font-size: 1.5em;
-  letter-spacing: 0.12em;
-  text-shadow: 2px 2px 0 #000, 0 0 10px rgba(192,48,58,0.6);
+  font-size: 1.7em;
+  letter-spacing: 0.14em;
+  text-shadow: 3px 3px 0 #000, 0 0 16px rgba(192,48,58,0.7);
   animation: levelBanner 1.2s ease-out forwards;
 }
-/* Feint-dodged: gold float-up — you read it correctly */
+/* Feint-dodged: gold float-up */
 .popup.feint-dodge {
   color: var(--amber);
-  font-size: 1.0em;
-  letter-spacing: 0.10em;
-  text-shadow: 1px 1px 0 #000, 0 0 6px rgba(224,160,32,0.5);
+  font-size: 1.1em;
+  letter-spacing: 0.12em;
+  text-shadow: 1px 1px 0 #000, 0 0 8px rgba(224,160,32,0.6);
   animation: floatUp 1.0s ease-out forwards;
 }
 
@@ -308,10 +316,12 @@ html, body {
 .overlay.hidden { display: none; }
 
 #title h1 {
-  font-size: clamp(1.8rem, 7vw, 3.4rem);
-  line-height: 0.92;
+  font-family: var(--brush);
+  font-weight: 900;
+  font-size: clamp(2rem, 7.5vw, 3.8rem);
+  line-height: 0.9;
   margin: 0 0 0.2em;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: #e8e6d4;
   text-shadow: 3px 3px 0 #b5402c, 6px 6px 0 #2a0f0a;
 }
@@ -360,11 +370,13 @@ html, body {
 .cheat-btn:active { transform: translateY(1px); }
 
 #gameover h2 {
-  font-size: clamp(1.4rem, 5vw, 2.4rem);
+  font-family: var(--brush);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 5.5vw, 2.8rem);
   color: var(--danger);
-  text-shadow: 2px 2px 0 #000;
+  text-shadow: 2px 2px 0 #000, 0 0 14px rgba(192,48,58,0.5);
   margin: 0 0 0.4em;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 }
 
 .reached {
