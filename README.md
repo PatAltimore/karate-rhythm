@@ -3,7 +3,7 @@
 A rhythm-based side-scrolling fighter in three acts. Inspired by the original
 Apple II **Karateka** (1984). You run and kick to defeat guards who march in **on the beat**.
 
-Try it: [https://happy-mushroom-08d27c51e.7.azurestaticapps.net/](https://happy-mushroom-08d27c51e.7.azurestaticapps.net/)
+Try it: [https://pataltimore.github.io/karate-rhythm/](https://pataltimore.github.io/karate-rhythm/)
 
 ## How to play
 
@@ -45,8 +45,7 @@ js/audio.js                 Web Audio chiptune + the musical beat clock
 js/sprites.js               procedural fighter sprites (run / jump-kick / KO)
 js/background.js            parallax sky, mountains, palace, scrolling ground
 js/game.js                  state, input, rhythm hit-detection, render loop
-staticwebapp.config.json    Azure Static Web Apps routing/headers
-.github/workflows/          CI deploy to Azure Static Web Apps
+.github/workflows/          CI deploy to GitHub Pages
 ```
 
 No dependencies, no bundler. Everything is loaded as classic `<script>` tags.
